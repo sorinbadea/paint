@@ -4,19 +4,15 @@
 
 DrawingCanvas::DrawingCanvas(QWidget *parent)
     : QWidget(parent),
-    m_mode(ToolMode::Line),
     m_isDrawing(false),
     m_selectedShape(nullptr),
     m_pen_width(2),
     m_drawing_color(QColor("#0284c7")),
     m_preview_color(QColor("#dc2626")),
     m_selected_color(QColor("#b9b90b")),
-    //m_preview_colorQColor("#dc2626"), 2, Qt::DashLine)),
-    //m_selected_color(QPen(QColor("#b9b90b"), 2, Qt::DashLine)),
     m_drawing_qbrush(QBrush(QColor(37, 99, 235, 40))),
     m_select_brush(QBrush(QColor(250, 204, 21, 40))),
     m_preview_qbrush(QBrush(QColor(220, 38, 38, 30))) {
-    
     setBackgroundRole(QPalette::Base); 
     setAutoFillBackground(true);
 }
@@ -85,8 +81,8 @@ void DrawingCanvas::paintEvent(QPaintEvent *) {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
     paintGrid(painter, 16); // Draw grid with 16px spacing
-    
-    // A. Draw all saved shapes in the exact order they were created
+
+    // A. Draw all saved shapes in the order they were created
     for (const auto &shape : m_shapes)
         shape->draw(painter);
 
@@ -114,8 +110,8 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
                     m_selectedShape = shape.get();
                     m_currentPos = event->position();
                     m_shape_pen = shape->getPen();
+                    //set the pen for the highlighted objects
                     QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
-                    // Highlight selected shape
                     shape->setPen(pencil);
                     break;
                 }
@@ -123,6 +119,7 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
         }
         else {
             // drawing..
+            m_last_mode = m_mode;
             m_startPos = event->position();
             m_currentPos = m_startPos;
             m_isDrawing = true;
@@ -151,6 +148,7 @@ void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
         // Highlight selected shape
         m_selectedShape->setPen(m_shape_pen);
         m_selectedShape = nullptr;
+        m_mode = m_last_mode;
         update();
     }
     else if (event->button() == Qt::LeftButton && m_isDrawing) {

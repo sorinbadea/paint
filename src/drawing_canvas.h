@@ -51,8 +51,12 @@ private:
     QBrush m_drawing_qbrush;
     QBrush m_preview_qbrush;
     QBrush m_select_brush;
-    QAction m_select_action;
+    //store the pen of the selected shqpe
     QPen m_shape_pen;
+    //store the brush of the selected shape
+    QBrush m_shape_brush;
+    //store the drawing mode
+    ToolMode m_last_mode;
 };
 
 #endif // DRAWINGCANVAS_H
