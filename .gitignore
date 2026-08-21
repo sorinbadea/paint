@@ -1,0 +1,7 @@
+.qt/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+QtPaint
+QtPaint_autogen/
+cmake_install.cmak
