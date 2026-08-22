@@ -28,6 +28,7 @@ public:
     bool saveToFile(const QString &filePath) const;
     bool loadFromFile(const QString &filePath);
     void setPenWidth(int width);
+    void setColor(const QColor& color);
     
 protected:
     void paintGrid(QPainter& painter, unsigned grid_width);

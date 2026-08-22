@@ -2,6 +2,7 @@
 #include "drawing_canvas.h"
 
 #include <QFileDialog>
+#include <QColorDialog>
 #include <QActionGroup>
 #include <QToolBar>
 #include <QLabel>
@@ -81,6 +82,9 @@ public:
         resize(800, 600);
         createMenus();
     }
+    ~MainWindow() {
+        delete m_colorAction;
+    }
 
 private:
     QIcon createPenWidthIcon(int width) {
@@ -114,12 +118,10 @@ private:
             widthAction->setData(w); // Store numeric pixel width in action data
 
             actionGroup->addAction(widthAction);
-
             // Default to 2px checked
             if (w == 2) {
                 widthAction->setChecked(true);
             }
-
             // Trigger width change on click
             connect(widthAction, &QAction::triggered, this, [this, w]() {
                 m_canvas->setPenWidth(w);
@@ -260,7 +262,7 @@ private:
             m_canvas->setMode(ToolMode::Circle);
         });
 
-        // 3. Add Select Action with custom icon
+        // 4. Add Select Action with custom icon
         QAction *selectToolBarAction = new QAction(createDragIcon(), "Select", this);
         selectToolBarAction->setCheckable(true);
         toolbar->addAction(selectToolBarAction);
@@ -268,11 +270,42 @@ private:
             m_canvas->setMode(ToolMode::Select);
         });
 
+        // 5. Color picker
+        m_colorAction = new QAction(tr("Select Color"), this);
+        m_colorAction->setStatusTip(tr("Choose a custom palette color"));
+        // (Optional) Generate a small color preview icon for the toolbar action
+        QPixmap colorIcon(16, 16);
+        colorIcon.fill(m_selectedColor);
+        m_colorAction->setIcon(QIcon(colorIcon));
+        // Add action to the existing toolbar
+        toolbar->addAction(m_colorAction);
+        // Connect toolbar action to the slot
+        connect(m_colorAction, &QAction::triggered, this, &MainWindow::chooseColor);
     }
 
-private:
-    //DrawingCanvas *m_canvas;
+    void chooseColor() {
+        // Open the color picker dialog passing current color as initial state
+        m_color= QColorDialog::getColor(
+            m_selectedColor, 
+            this, 
+            tr("Select Color")
+        );
+        // Check if the user pressed 'OK' (returns valid color) vs 'Cancel'
+        if (m_color.isValid()) {
+            m_selectedColor = m_color;  
+            // Update the toolbar button icon to match the new color
+            QPixmap colorIcon(16, 16);
+            colorIcon.fill(m_selectedColor);
+            m_colorAction->setIcon(QIcon(colorIcon));
+            m_canvas->setColor(m_selectedColor);
+        }
+    }
+
+    // private data
     std::unique_ptr<DrawingCanvas> m_canvas;
+    QColor m_selectedColor;
+    QAction *m_colorAction;
+    QColor m_color;
 };
 
 #include "main.moc"
@@ -280,7 +313,7 @@ private:
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     QFont font = app.font();
-    font.setPointSize(10); 
+    font.setPointSize(11); 
     app.setFont(font);
     MainWindow window;
     window.show();

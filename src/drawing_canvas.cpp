@@ -10,9 +10,9 @@ DrawingCanvas::DrawingCanvas(QWidget *parent)
     m_drawing_color(QColor("#0284c7")),
     m_preview_color(QColor("#dc2626")),
     m_selected_color(QColor("#b9b90b")),
-    m_drawing_qbrush(QBrush(QColor(37, 99, 235, 40))),
-    m_select_brush(QBrush(QColor(250, 204, 21, 40))),
-    m_preview_qbrush(QBrush(QColor(220, 38, 38, 30))) {
+    m_drawing_qbrush(QBrush(QColor("#1e4db428"))),
+    m_select_brush(QBrush(QColor("#facc1566"))),
+    m_preview_qbrush(QBrush(QColor("#dc26261e"))) {
     setBackgroundRole(QPalette::Base); 
     setAutoFillBackground(true);
 }
@@ -24,6 +24,10 @@ void DrawingCanvas::setMode(ToolMode mode) {
 
 void DrawingCanvas::setPenWidth(int width) {
     m_pen_width = width;
+}
+
+void DrawingCanvas::setColor(const QColor& color) {
+   m_drawing_color = color;
 }
 
 void DrawingCanvas::undoLast() {
