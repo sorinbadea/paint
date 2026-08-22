@@ -12,6 +12,12 @@ void LineShape::draw(QPainter &painter) const {
     painter.drawLine(m_line);
 }
 
+void LineShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
+    QLineF line(*shape_data.start, *shape_data.end);
+    painter.setPen(m_pen);
+    painter.drawLine(line);
+}
+
 ShapeType LineShape::type() const { 
     return ShapeType::Line;
 }
@@ -43,6 +49,13 @@ void LineShape::setPen(const QPen &pen) {
     m_pen = pen;
 }
 
+void LineShape::setShapeData(const ShapeData_t& shape_data) {
+    if (shape_data.start && shape_data.end) {
+        m_line.setP1(shape_data.start.value());
+        m_line.setP1(shape_data.end.value());
+    }
+}
+
 void LineShape::moveRelative(const QPointF &delta) {
     m_line.setP1(m_line.p1() + delta);
     m_line.setP2(m_line.p2() + delta);
@@ -56,6 +69,14 @@ void CircleShape::draw(QPainter &painter) const {
     painter.setPen(m_pen);
     painter.setBrush(m_brush);
     painter.drawEllipse(m_center, m_radius, m_radius);
+}
+
+void CircleShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
+    painter.setPen(m_pen);
+    if (shape_data.radius > 0) {
+        painter.setBrush(m_brush);
+        painter.drawEllipse(*shape_data.start, *shape_data.radius, *shape_data.radius);
+    }
 }
 
 ShapeType CircleShape::type() const { 
@@ -83,6 +104,13 @@ QPen CircleShape::getPen() const {
 
 void CircleShape::setPen(const QPen &pen) {
     m_pen = pen;
+}
+
+void CircleShape::setShapeData(const ShapeData_t& shape_data) {
+    if (shape_data.start && shape_data.end) {
+        m_radius = std::hypot(shape_data.end.value().x()
+        - shape_data.start.value().x(), shape_data.end.value().y() - shape_data.start.value().y());
+    }
 }
 
 void CircleShape::moveRelative(const QPointF &delta) {

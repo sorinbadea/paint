@@ -36,7 +36,6 @@ protected:
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override ;
-    void paintShape(const ShapeData_t &shapeData, const QPen& pen, const QBrush& brush, QPainter& painter);
 
 private:
     ToolMode m_mode;
@@ -45,6 +44,7 @@ private:
     QPointF m_startPos;
     QPointF m_currentPos;
     std::vector<std::unique_ptr<Shape>> m_shapes;
+    std::unique_ptr<Shape> m_shape;
     Shape* m_selectedShape;
     QColor m_drawing_color;
     QColor m_preview_color;
@@ -56,8 +56,6 @@ private:
     QPen m_shape_pen;
     //store the brush of the selected shape
     QBrush m_shape_brush;
-    //store the drawing mode
-    ToolMode m_last_mode;
 };
 
 #endif // DRAWINGCANVAS_H

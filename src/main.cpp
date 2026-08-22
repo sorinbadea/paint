@@ -33,14 +33,14 @@ QIcon createCircleIcon() {
     pixmap.fill(Qt::transparent);
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(Qt::red, 3));
+    painter.setPen(QPen(Qt::red, 3, Qt::SolidLine, Qt::RoundCap));
     painter.setBrush(Qt::NoBrush);
     // Draw circle in center
     painter.drawEllipse(5, 5, 22, 22);
     return QIcon(pixmap);
 }
 
-QIcon createDragIcon(int size = 32, const QColor &dotColor = QColor(100, 100, 100)) {
+QIcon createDragIcon(int size = 32, const QColor &dotColor = QColor(10, 10, 10)) {
     // 1. Create a transparent pixmap buffer
     QPixmap pixmap(size, size);
     pixmap.fill(Qt::transparent);
@@ -51,7 +51,7 @@ QIcon createDragIcon(int size = 32, const QColor &dotColor = QColor(100, 100, 10
     painter.setBrush(dotColor);
 
     // 2. Define grid parameters (2 columns x 3 rows of grip dots)
-    int dotRadius = size / 12; // Radius of each dot
+    int dotRadius = size / 13; // Radius of each dot
     if (dotRadius < 2) dotRadius = 2;
 
     int spacingY = size / 4;  // Vertical distance between dots
@@ -62,7 +62,6 @@ QIcon createDragIcon(int size = 32, const QColor &dotColor = QColor(100, 100, 10
     // 3. Draw the 6 dots forming a vertical drag grip handle
     for (int i = 0; i < 3; ++i) {
         int y = startY + (i * spacingY);
-        
         // Left column dot
         painter.drawEllipse(QPoint(col1_X, y), dotRadius, dotRadius);
         // Right column dot
@@ -103,20 +102,16 @@ private:
     void addPenMenuToEdit(QMenu *editMenu) {
         // 1. Create a "Pen Width" sub-menu inside Edit
         QMenu *penSubMenu = editMenu->addMenu("&Pen Width");
-
         // Sample width values
         const QVector<int> widths = {1, 2, 3, 5, 8, 12};
-
         // --- Option A: Standard QAction list with visual icons ---
         auto *actionGroup = new QActionGroup(penSubMenu);
         actionGroup->setExclusive(true);
-
         for (int w : widths) {
             QString text = QString("%1 px").arg(w);
             QAction *widthAction = penSubMenu->addAction(createPenWidthIcon(w), text);
             widthAction->setCheckable(true);
             widthAction->setData(w); // Store numeric pixel width in action data
-
             actionGroup->addAction(widthAction);
             // Default to 2px checked
             if (w == 2) {
@@ -280,25 +275,23 @@ private:
         // Add action to the existing toolbar
         toolbar->addAction(m_colorAction);
         // Connect toolbar action to the slot
-        connect(m_colorAction, &QAction::triggered, this, &MainWindow::chooseColor);
-    }
-
-    void chooseColor() {
-        // Open the color picker dialog passing current color as initial state
-        m_color= QColorDialog::getColor(
-            m_selectedColor, 
-            this, 
-            tr("Select Color")
-        );
-        // Check if the user pressed 'OK' (returns valid color) vs 'Cancel'
-        if (m_color.isValid()) {
-            m_selectedColor = m_color;  
-            // Update the toolbar button icon to match the new color
-            QPixmap colorIcon(16, 16);
-            colorIcon.fill(m_selectedColor);
-            m_colorAction->setIcon(QIcon(colorIcon));
-            m_canvas->setColor(m_selectedColor);
-        }
+        connect(m_colorAction, &QAction::triggered, this, [this]() {
+            // Open the color picker dialog passing current color as initial state
+            m_color= QColorDialog::getColor(
+                m_selectedColor, 
+                this, 
+                tr("Select Color")
+            );
+            // Check if the user pressed 'OK' (returns valid color) vs 'Cancel'
+            if (m_color.isValid()) {
+                m_selectedColor = m_color;  
+                // Update the toolbar button icon to match the new color
+                QPixmap colorIcon(16, 16);
+                colorIcon.fill(m_selectedColor);
+                m_colorAction->setIcon(QIcon(colorIcon));
+                m_canvas->setColor(m_selectedColor);
+            }    
+        });
     }
 
     // private data

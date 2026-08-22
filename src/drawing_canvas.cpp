@@ -48,8 +48,8 @@ void DrawingCanvas::paintGrid(QPainter& painter, unsigned grid_width)
     painter.fillRect(rect(), Qt::white);
     int w = width();
     int h = height();
-    QPen minorPen(QColor(230, 230, 230), 1);
-    QPen majorPen(QColor(180, 200, 230), 2);
+    QPen minorPen(QColor("#e6e6e6"), 1);
+    QPen majorPen(QColor("#b4c8e6"), 2);
     // Draw Vertical Lines
     for (int x = 0, lineCount = 0; x < w; x += grid_width, ++lineCount) {
         painter.setPen((lineCount % 5 == 0) ? majorPen : minorPen);
@@ -59,24 +59,6 @@ void DrawingCanvas::paintGrid(QPainter& painter, unsigned grid_width)
     for (int y = 0, lineCount = 0; y < h; y += grid_width, ++lineCount) {
         painter.setPen((lineCount % 5 == 0) ? majorPen : minorPen);
         painter.drawLine(0, y, w, y);
-    }
-}
-
-void DrawingCanvas::paintShape(const ShapeData_t &shapeData, const QPen& pen, const QBrush& brush, QPainter& painter) {
-    // Line
-    if (shapeData.type == ShapeType::Line && shapeData.start && shapeData.end) {
-        QLineF line(*shapeData.start, *shapeData.end);
-        painter.setPen(pen);
-        painter.drawLine(line);
-    //Circle
-    } else if (shapeData.type == ShapeType::Circle && shapeData.start && shapeData.radius) {
-        painter.setPen(pen);
-        if (shapeData.radius > 0) {
-            painter.setBrush(brush);
-            painter.drawEllipse(*shapeData.start, *shapeData.radius, *shapeData.radius);
-        }
-    } else {
-        qDebug() << "Invalid shape data for painting.";
     }
 }
 
@@ -93,13 +75,12 @@ void DrawingCanvas::paintEvent(QPaintEvent *) {
     // Drawing mode
     // B. Draw temporary preview while dragging the mouse
     if (m_isDrawing) {
-        QPen pencil(QPen(m_preview_color, m_pen_width, Qt::DashLine));
         ShapeData_t previewData;
         previewData.start = m_startPos;
         previewData.end = m_currentPos;
         previewData.radius = std::hypot(m_currentPos.x() - m_startPos.x(), m_currentPos.y() - m_startPos.y());
         previewData.type = (m_mode == ToolMode::Line) ? ShapeType::Line : ShapeType::Circle;
-        paintShape(previewData, pencil, m_preview_qbrush, painter);
+        m_shape->draw(painter, previewData);
     }
 }
 
@@ -110,7 +91,7 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
             for(const auto& shape : m_shapes) {   
                 if (shape->contains(event->position())) {
                     QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
-                    qDebug() << "Selected shape of type: " << static_cast<int>(shape->type());
+                    // qDebug() << "Selected shape of type: " << static_cast<int>(shape->type());
                     m_selectedShape = shape.get();
                     m_currentPos = event->position();
                     m_shape_pen = shape->getPen();
@@ -123,10 +104,20 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
         }
         else {
             // drawing..
-            m_last_mode = m_mode;
             m_startPos = event->position();
             m_currentPos = m_startPos;
             m_isDrawing = true;
+            QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
+            if (m_mode == ToolMode::Line) {
+                QLineF line(m_startPos, m_currentPos);
+                m_shape = std::make_unique<LineShape>(line, pencil);
+            }
+            else if (m_mode == ToolMode::Circle) {
+                qreal radius = std::hypot(m_currentPos.x() - m_startPos.x(), m_currentPos.y() - m_startPos.y());
+                m_shape = std::make_unique<CircleShape>(m_startPos, radius, pencil, m_drawing_qbrush);
+            }
+            else
+                qDebug() << "Unknown shape..";
         }
         update();
     }
@@ -135,6 +126,8 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
 void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
     if (m_isDrawing) {
         m_currentPos = event->position();
+        ShapeData_t shape_data = {m_shape->type(), m_startPos, m_currentPos, std::nullopt};
+        m_shape->setShapeData(shape_data);
         update(); // Re-trigger paintEvent for preview
      } else if(m_selectedShape) {
         // Dragging selected shape
@@ -146,31 +139,19 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
-
     if(m_selectedShape) {
         QGuiApplication::restoreOverrideCursor();
         // Highlight selected shape
         m_selectedShape->setPen(m_shape_pen);
         m_selectedShape = nullptr;
-        m_mode = m_last_mode;
         update();
     }
     else if (event->button() == Qt::LeftButton && m_isDrawing) {
         m_isDrawing = false;
         m_currentPos = event->position();
         QPen pencil(QPen(m_drawing_color, m_pen_width, Qt::SolidLine));
-        // Line drawing
-        if (m_mode == ToolMode::Line) {
-            QLineF line(m_startPos, m_currentPos);
-            if (line.length() > 2.0)
-                m_shapes.push_back(std::make_unique<LineShape>(line, pencil));
-        // Circle drawing
-        } else if (m_mode == ToolMode::Circle) {
-            qreal radius = std::hypot(m_currentPos.x() - m_startPos.x(),
-                                        m_currentPos.y() - m_startPos.y());
-            if (radius > 2.0)
-                m_shapes.push_back(std::make_unique<CircleShape>(m_startPos, radius, pencil, m_drawing_qbrush));
-        }
+        m_shape->setPen(pencil);
+        m_shapes.push_back(std::move(m_shape));
         update();
     }
 }
