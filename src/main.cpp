@@ -155,6 +155,14 @@ private:
         });
         toolsMenu->addAction(circleAction);
 
+        // Rectangle option
+        //--------------
+        QAction *rectangleAction = new QAction("&Rectangle Mode", this);
+        connect(rectangleAction, &QAction::triggered, this, [this]() {
+            m_canvas->setMode(ToolMode::Rectangle);
+        });
+        toolsMenu->addAction(rectangleAction);
+
         // Edit Menu
         //------------
         QMenu *editMenu = menuBar()->addMenu("&Edit");
@@ -203,6 +211,14 @@ private:
         toolbar->addAction(circleToolBarAction);
         connect(circleToolBarAction, &QAction::triggered, this, [this]() {
             m_canvas->setMode(ToolMode::Circle);
+        });
+
+        // 3. Add Circle Action with custom icon
+        QAction *rectangleToolBarAction = new QAction(createRectangleIcon(), "Rectangle", this);
+        rectangleToolBarAction->setCheckable(true);
+        toolbar->addAction(rectangleToolBarAction);
+        connect(rectangleToolBarAction, &QAction::triggered, this, [this]() {
+            m_canvas->setMode(ToolMode::Rectangle);
         });
 
         // 4. Add Select Action with custom icon

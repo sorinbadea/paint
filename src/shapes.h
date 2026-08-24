@@ -9,7 +9,9 @@ constexpr double EPSILON = 1.0; // Tolerance for point-on-line checks
 
 enum class ShapeType : quint32 {
     Line = 1,
-    Circle = 2
+    Circle = 2,
+    Rectangle = 3,
+    None
 };
 
 typedef struct {
@@ -96,6 +98,31 @@ private:
     //coordinates and radius
     QPointF m_center;
     qreal m_radius;
+};
+
+class RectangleShape : public Shape {
+public:
+    RectangleShape() = default;
+    RectangleShape(const QRectF &rect, const QPen &pen);
+    void draw(QPainter &painter) const override;
+    void draw(QPainter &painter, const ShapeData_t& shape_data) const override;
+    ShapeType type() const override;
+    bool contains(const QPointF &point) const override;
+    QPen getPen() const override;
+    QBrush getBrush() const override;
+    void setPen(const QPen &pen) override;
+    void setBrush(const QBrush &brush) override;
+    void setShapeData(const ShapeData_t& shape_data) override;
+    void moveRelative(const QPointF &delta) override;
+    void serialize(QDataStream &out) const override;
+    void deserialize(QDataStream &in) override;
+
+private:
+    //coordinates
+    QRectF m_rectangle;
+    //pen brushes..
+    QPen m_pen;
+    QBrush m_brush;
 };
 
 #endif

@@ -69,6 +69,72 @@ void LineShape::moveRelative(const QPointF &delta) {
     m_line.setP2(m_line.p2() + delta);
 }
 
+// ========================== RECTANGLE SHAPE ==========================
+RectangleShape::RectangleShape(const QRectF &rectangle, const QPen &pen)
+    : m_rectangle(rectangle), m_pen(pen) {
+        m_rectangle = m_rectangle.normalized();
+    }
+
+void RectangleShape::draw(QPainter &painter) const {
+    painter.setPen(m_pen);
+    painter.setBrush(m_brush);
+    painter.drawRect(m_rectangle);
+}
+
+void RectangleShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
+    QRectF rect(*shape_data.start, *shape_data.end);
+    rect = rect.normalized();
+    painter.setPen(m_pen);
+    painter.setBrush(m_brush);
+    painter.drawRect(rect);
+}
+
+ShapeType RectangleShape::type() const { 
+    return ShapeType::Rectangle;
+}
+
+void RectangleShape::serialize(QDataStream &out) const {
+    out << m_rectangle << m_pen << m_brush; // QDataStream natively supports Qt types!
+}
+
+void RectangleShape::deserialize(QDataStream &in) {
+    in >> m_rectangle >> m_pen >> m_brush;
+}
+
+bool RectangleShape::contains(const QPointF &point) const{
+    return m_rectangle.contains(point);
+}
+
+QPen RectangleShape::getPen() const {
+    return m_pen;
+}
+
+QBrush RectangleShape::getBrush() const {
+    return m_brush;
+}
+
+void RectangleShape::setPen(const QPen &pen) {
+    m_pen = pen;
+}
+
+void RectangleShape::setBrush(const QBrush &brush) {
+    m_brush = brush;
+}
+
+void RectangleShape::setShapeData(const ShapeData_t& shape_data) {
+    if (shape_data.start && shape_data.end) {
+        m_rectangle.setTopLeft(shape_data.start.value());
+        m_rectangle.setBottomRight(shape_data.end.value());
+        m_rectangle = m_rectangle.normalized();
+    }
+}
+
+void RectangleShape::moveRelative(const QPointF &delta) {
+    m_rectangle.setTopLeft( m_rectangle.topLeft() + delta);
+    m_rectangle.setBottomRight( m_rectangle.bottomRight() + delta);
+    m_rectangle = m_rectangle.normalized();
+}
+
 // ========================== CIRCLE SHAPE ==========================
 CircleShape::CircleShape(const QPointF &center, qreal radius, const QPen &pen, const QBrush &brush)
         : m_center(center), m_radius(radius), m_pen(pen), m_brush(brush) {}

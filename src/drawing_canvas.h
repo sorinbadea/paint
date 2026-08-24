@@ -13,7 +13,11 @@ constexpr int pen_width = 2;
 // -------------------------------------------------------------
 // 3. CANVAS WIDGET
 // -------------------------------------------------------------
-enum class ToolMode { Line, Circle, Select };
+enum class ToolMode { Line, 
+                    Circle, 
+                    Rectangle, 
+                    Select
+                };
 
 class DrawingCanvas : public QWidget {
     Q_OBJECT
@@ -32,13 +36,16 @@ public:
     void setBrushColor(const QColor& brush);
     
 protected:
-    void paintGrid(QPainter& painter, unsigned grid_width);
+
     void paintEvent(QPaintEvent *) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
-    void mouseReleaseEvent(QMouseEvent *event) override ;
+    void mouseReleaseEvent(QMouseEvent *event) override;
 
 private:
+    void paintGrid(QPainter& painter, unsigned grid_width);
+    ShapeType getShapeType(const ToolMode& tm) const;
+
     ToolMode m_mode;
     bool m_isDrawing;
     int m_pen_width;

@@ -26,6 +26,21 @@ QIcon createCircleIcon() {
     return QIcon(pixmap);
 }
 
+QIcon createRectangleIcon() {
+    // 1. Create a 16x16 pixmap with a transparent background
+    QPixmap pixmap(32, 32);
+    pixmap.fill(Qt::transparent);
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing, false);
+    // 3. Define pen (3px outline) and no brush
+    painter.setPen(QPen(Qt::red, 2));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawRect(5, 5, 22, 22);
+    painter.end();
+    // 5. Wrap the QPixmap into a QIcon
+    return QIcon(pixmap);
+}
+
 QIcon createDragIcon(int size, const QColor &dotColor) {
     // 1. Create a transparent pixmap buffer
     QPixmap pixmap(size, size);

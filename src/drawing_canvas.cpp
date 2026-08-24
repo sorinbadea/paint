@@ -45,6 +45,16 @@ void DrawingCanvas::clearAll() {
     update();
 }
 
+ShapeType DrawingCanvas::getShapeType(const ToolMode& tm) const {
+    if (tm == ToolMode::Line)
+        return ShapeType::Line;
+    else if (tm == ToolMode::Circle)
+        return ShapeType::Circle;
+    else if (tm == ToolMode::Rectangle)
+        return ShapeType::Rectangle;
+    return ShapeType::None;
+}
+
 void DrawingCanvas::paintGrid(QPainter& painter, unsigned grid_width)
 {
     painter.fillRect(rect(), Qt::white);
@@ -82,7 +92,7 @@ void DrawingCanvas::paintEvent(QPaintEvent *) {
         previewData.start = m_startPos;
         previewData.end = m_currentPos;
         previewData.radius = std::hypot(m_currentPos.x() - m_startPos.x(), m_currentPos.y() - m_startPos.y());
-        previewData.type = (m_mode == ToolMode::Line) ? ShapeType::Line : ShapeType::Circle;
+        previewData.type = getShapeType(m_mode);
         m_shape->draw(painter, previewData);
     }
 }
@@ -109,8 +119,7 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
         }
         else {
             // Mode drawing
-            m_startPos = event->position();
-            m_currentPos = m_startPos;
+            m_startPos =  m_currentPos = event->position();
             m_isDrawing = true;
             QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
             if (m_mode == ToolMode::Line) {
@@ -120,6 +129,10 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
             else if (m_mode == ToolMode::Circle) {
                 qreal radius = std::hypot(m_currentPos.x() - m_startPos.x(), m_currentPos.y() - m_startPos.y());
                 m_shape = std::make_unique<CircleShape>(m_startPos, radius, pencil, m_select_brush);
+            }
+            else if (m_mode == ToolMode::Rectangle) {
+                QRectF rect(m_startPos, m_currentPos);
+                m_shape = std::make_unique<RectangleShape>(rect, pencil);
             }
             else
                 qDebug() << "Unknown shape..";
@@ -188,27 +201,50 @@ bool DrawingCanvas::loadFromFile(const QString &filePath) {
     }
     QDataStream in(&file);
     in.setVersion(QDataStream::Qt_6_0);
-    m_shapes.clear(); // Clear current canvas before loading
-
-    quint32 count;
+    quint32 count = 0;
     in >> count;
+    // Check if reading the header count failed
+    if (in.status() != QDataStream::Ok) {
+        return false;
+    }
+
+    m_shapes.clear(); // Clear canvas only after confirming file header is valid
+    m_shapes.reserve(count); // Optimize vector allocations
 
     for (quint32 i = 0; i < count; ++i) {
-        quint32 rawType;
+        quint32 rawType = 0;
         in >> rawType;
+        if (in.status() != QDataStream::Ok) {
+            break; // Stop if stream is truncated or corrupted
+        }
         std::unique_ptr<Shape> shape;
-        // Factory instantiation based on Type ID
-        if (static_cast<ShapeType>(rawType) == ShapeType::Line) {
-            shape = std::make_unique<LineShape>();
-        } else if (static_cast<ShapeType>(rawType) == ShapeType::Circle) {
-            shape = std::make_unique<CircleShape>();
+        switch (static_cast<ShapeType>(rawType)) {
+            case ShapeType::Line:
+                shape = std::make_unique<LineShape>();
+                break;
+            case ShapeType::Circle:
+                shape = std::make_unique<CircleShape>();
+                break;
+            case ShapeType::Rectangle:
+                shape = std::make_unique<RectangleShape>();
+                break;
+            default:
+                // Unknown shape type encountered in file
+                return false;
         }
         if (shape) {
             shape->deserialize(in);
+
+            // Verify serialization of individual shape succeeded
+            if (in.status() != QDataStream::Ok) {
+                m_shapes.clear();
+                return false;
+            }
+
             m_shapes.push_back(std::move(shape));
         }
     }
-    update(); // Refresh screen with loaded shapes
+    update(); // Refresh widget canvas
     return true;
 }
 

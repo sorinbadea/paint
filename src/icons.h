@@ -20,9 +20,10 @@ helper file for icons drawing
 #include <QKeySequence>
 #include <QMessageBox>
 
-QIcon createLineIcon();
-QIcon createCircleIcon();
-QIcon createDragIcon(int size = 32, const QColor &dotColor = QColor(10, 10, 10));
-QIcon createPencilIcon(const QColor &color);
+QIcon   createLineIcon();
+QIcon   createCircleIcon();
+QIcon   createRectangleIcon();
+QIcon   createDragIcon(int size = 32, const QColor &dotColor = QColor(10, 10, 10));
+QIcon   createPencilIcon(const QColor &color);
 
 #endif
