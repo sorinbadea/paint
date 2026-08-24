@@ -1,80 +1,13 @@
 #include "shapes.h"
 #include "drawing_canvas.h"
-
-#include <QFileDialog>
-#include <QColorDialog>
-#include <QActionGroup>
-#include <QToolBar>
-#include <QLabel>
-#include <QApplication>
-#include <QMainWindow>
-#include <QMenuBar>
-#include <QMenu>
-#include <QAction>
-#include <QKeySequence>
-#include <QMessageBox>
-
-// Helper function to dynamically draw a simple Line icon
-QIcon createLineIcon() {
-    QPixmap pixmap(32, 32);
-    pixmap.fill(Qt::transparent);
-
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(Qt::red, 3, Qt::SolidLine, Qt::RoundCap));
-    // Draw diagonal line
-    painter.drawLine(3, 23, 23, 3);
-    return QIcon(pixmap);
-}
-
-// Helper function to dynamically draw a simple Circle icon
-QIcon createCircleIcon() {
-    QPixmap pixmap(32, 32);
-    pixmap.fill(Qt::transparent);
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(Qt::red, 3, Qt::SolidLine, Qt::RoundCap));
-    painter.setBrush(Qt::NoBrush);
-    // Draw circle in center
-    painter.drawEllipse(5, 5, 22, 22);
-    return QIcon(pixmap);
-}
-
-QIcon createDragIcon(int size = 32, const QColor &dotColor = QColor(10, 10, 10)) {
-    // 1. Create a transparent pixmap buffer
-    QPixmap pixmap(size, size);
-    pixmap.fill(Qt::transparent);
-
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(dotColor);
-
-    // 2. Define grid parameters (2 columns x 3 rows of grip dots)
-    int dotRadius = size / 13; // Radius of each dot
-    if (dotRadius < 2) dotRadius = 2;
-
-    int spacingY = size / 4;  // Vertical distance between dots
-    int col1_X = size / 3;    // Left column X
-    int col2_X = (size * 2) / 3; // Right column X
-    int startY = size / 4;    // Top row Y
-
-    // 3. Draw the 6 dots forming a vertical drag grip handle
-    for (int i = 0; i < 3; ++i) {
-        int y = startY + (i * spacingY);
-        // Left column dot
-        painter.drawEllipse(QPoint(col1_X, y), dotRadius, dotRadius);
-        // Right column dot
-        painter.drawEllipse(QPoint(col2_X, y), dotRadius, dotRadius);
-    }
-    return QIcon(pixmap);
-}
+#include "icons.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr) : QMainWindow(parent) {
+    MainWindow(QWidget *parent = nullptr) : QMainWindow(parent),
+        m_drawing_color(Qt::white) {
         m_canvas = std::make_unique<DrawingCanvas>(this);
         setCentralWidget(m_canvas.get());
         setWindowTitle("Paint brush (Qt6)");
@@ -82,7 +15,6 @@ public:
         createMenus();
     }
     ~MainWindow() {
-        delete m_colorAction;
     }
 
 private:
@@ -122,6 +54,22 @@ private:
                 m_canvas->setPenWidth(w);
             });
         }
+    }
+
+    QAction* colorPick(QToolBar* toolbar, const char *text,
+        QColor initialColor, std::function<void(const QColor&)> onColorChanged) {
+        QAction* colorAction = new QAction(tr(text), this);
+        colorAction->setIcon(createPencilIcon(initialColor));
+        toolbar->addAction(colorAction);
+        connect(colorAction, &QAction::triggered, this, [this, colorAction, initialColor, onColorChanged]() mutable {
+            QColor chosen = QColorDialog::getColor(initialColor, this, tr("Select Color"));
+            if (chosen.isValid()) {
+                initialColor = chosen;
+                colorAction->setIcon(createPencilIcon(chosen));
+                onColorChanged(chosen); // Execute callback with new color!
+            }
+        });
+        return colorAction;
     }
 
     void createMenus() {
@@ -265,40 +213,21 @@ private:
             m_canvas->setMode(ToolMode::Select);
         });
 
-        // 5. Color picker
-        m_colorAction = new QAction(tr("Select Color"), this);
-        m_colorAction->setStatusTip(tr("Choose a custom palette color"));
-        // (Optional) Generate a small color preview icon for the toolbar action
-        QPixmap colorIcon(16, 16);
-        colorIcon.fill(m_selectedColor);
-        m_colorAction->setIcon(QIcon(colorIcon));
-        // Add action to the existing toolbar
-        toolbar->addAction(m_colorAction);
-        // Connect toolbar action to the slot
-        connect(m_colorAction, &QAction::triggered, this, [this]() {
-            // Open the color picker dialog passing current color as initial state
-            m_color= QColorDialog::getColor(
-                m_selectedColor, 
-                this, 
-                tr("Select Color")
-            );
-            // Check if the user pressed 'OK' (returns valid color) vs 'Cancel'
-            if (m_color.isValid()) {
-                m_selectedColor = m_color;  
-                // Update the toolbar button icon to match the new color
-                QPixmap colorIcon(16, 16);
-                colorIcon.fill(m_selectedColor);
-                m_colorAction->setIcon(QIcon(colorIcon));
-                m_canvas->setColor(m_selectedColor);
-            }    
+        // 5. Drawing color picker
+        colorPick(toolbar, "Pen Color", Qt::white, [this](const QColor& c) {
+            m_canvas->setPaintColor(c);
+        });
+
+        // 6. Brush color picker
+        colorPick(toolbar, "Brush Color", Qt::white, [this](const QColor& c) {
+            m_canvas->setBrushColor(c);
         });
     }
 
     // private data
     std::unique_ptr<DrawingCanvas> m_canvas;
-    QColor m_selectedColor;
-    QAction *m_colorAction;
-    QColor m_color;
+    QColor m_drawing_color;
+    QColor m_brush_color;
 };
 
 #include "main.moc"

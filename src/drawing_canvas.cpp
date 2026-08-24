@@ -8,16 +8,14 @@ DrawingCanvas::DrawingCanvas(QWidget *parent)
     m_selectedShape(nullptr),
     m_pen_width(2),
     m_drawing_color(QColor("#0284c7")),
-    m_preview_color(QColor("#dc2626")),
-    m_selected_color(QColor("#b9b90b")),
-    m_drawing_qbrush(QBrush(QColor("#1e4db428"))),
-    m_select_brush(QBrush(QColor("#facc1566"))),
-    m_preview_qbrush(QBrush(QColor("#dc26261e"))) {
+    m_selected_color(QColor("#e3d01f")),
+    m_brush_color(QColor("#1e4db428")),
+    m_select_brush(QBrush(QColor("rgba(152, 102, 144, 0.14)"), Qt::DiagCrossPattern)) {
     setBackgroundRole(QPalette::Base); 
     setAutoFillBackground(true);
 }
 
-void DrawingCanvas::setMode(ToolMode mode) {
+void DrawingCanvas::setMode(const ToolMode& mode) {
     m_mode = mode;
     m_isDrawing = false;
 }
@@ -26,7 +24,11 @@ void DrawingCanvas::setPenWidth(int width) {
     m_pen_width = width;
 }
 
-void DrawingCanvas::setColor(const QColor& color) {
+void DrawingCanvas::setBrushColor(const QColor& brush) {
+    m_brush_color = brush;
+}
+
+void DrawingCanvas::setPaintColor(const QColor& color) {
    m_drawing_color = color;
 }
 
@@ -49,7 +51,7 @@ void DrawingCanvas::paintGrid(QPainter& painter, unsigned grid_width)
     int w = width();
     int h = height();
     QPen minorPen(QColor("#e6e6e6"), 1);
-    QPen majorPen(QColor("#b4c8e6"), 2);
+    QPen majorPen(QColor("#7f9bc6"), 1);
     // Draw Vertical Lines
     for (int x = 0, lineCount = 0; x < w; x += grid_width, ++lineCount) {
         painter.setPen((lineCount % 5 == 0) ? majorPen : minorPen);
@@ -74,7 +76,8 @@ void DrawingCanvas::paintEvent(QPaintEvent *) {
 
     // Drawing mode
     // B. Draw temporary preview while dragging the mouse
-    if (m_isDrawing) {
+    if (m_isDrawing && m_shape) {
+        // prepare the shape coordinates and colors for drawing
         ShapeData_t previewData;
         previewData.start = m_startPos;
         previewData.end = m_currentPos;
@@ -95,15 +98,17 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
                     m_selectedShape = shape.get();
                     m_currentPos = event->position();
                     m_shape_pen = shape->getPen();
-                    //set the pen for the highlighted objects
+                    m_shape_brush = shape->getBrush();
+                    // set the pen for the highlighted object
                     QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
                     shape->setPen(pencil);
+                    shape->setBrush(m_select_brush);
                     break;
                 }
             }
         }
         else {
-            // drawing..
+            // Mode drawing
             m_startPos = event->position();
             m_currentPos = m_startPos;
             m_isDrawing = true;
@@ -114,7 +119,7 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
             }
             else if (m_mode == ToolMode::Circle) {
                 qreal radius = std::hypot(m_currentPos.x() - m_startPos.x(), m_currentPos.y() - m_startPos.y());
-                m_shape = std::make_unique<CircleShape>(m_startPos, radius, pencil, m_drawing_qbrush);
+                m_shape = std::make_unique<CircleShape>(m_startPos, radius, pencil, m_select_brush);
             }
             else
                 qDebug() << "Unknown shape..";
@@ -141,8 +146,9 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
 void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
     if(m_selectedShape) {
         QGuiApplication::restoreOverrideCursor();
-        // Highlight selected shape
+        // Restore the brush and color of rthe selecetd shape
         m_selectedShape->setPen(m_shape_pen);
+        m_selectedShape->setBrush(m_shape_brush);
         m_selectedShape = nullptr;
         update();
     }
@@ -150,7 +156,9 @@ void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
         m_isDrawing = false;
         m_currentPos = event->position();
         QPen pencil(QPen(m_drawing_color, m_pen_width, Qt::SolidLine));
+        QBrush brush(m_brush_color, Qt::SolidPattern);
         m_shape->setPen(pencil);
+        m_shape->setBrush(brush);
         m_shapes.push_back(std::move(m_shape));
         update();
     }

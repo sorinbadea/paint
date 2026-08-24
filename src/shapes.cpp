@@ -45,8 +45,16 @@ QPen LineShape::getPen() const {
     return m_pen;
 }
 
+QBrush LineShape::getBrush() const {
+    return m_brush;
+}
+
 void LineShape::setPen(const QPen &pen) {
     m_pen = pen;
+}
+
+void LineShape::setBrush(const QBrush &brush) {
+    m_brush = brush;
 }
 
 void LineShape::setShapeData(const ShapeData_t& shape_data) {
@@ -66,14 +74,16 @@ CircleShape::CircleShape(const QPointF &center, qreal radius, const QPen &pen, c
         : m_center(center), m_radius(radius), m_pen(pen), m_brush(brush) {}
 
 void CircleShape::draw(QPainter &painter) const {
-    painter.setPen(m_pen);
-    painter.setBrush(m_brush);
-    painter.drawEllipse(m_center, m_radius, m_radius);
+    if (m_radius >0) {
+        painter.setPen(m_pen);
+        painter.setBrush(m_brush);
+        painter.drawEllipse(m_center, m_radius, m_radius);
+    }
 }
 
 void CircleShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
-    painter.setPen(m_pen);
     if (shape_data.radius > 0) {
+        painter.setPen(m_pen);
         painter.setBrush(m_brush);
         painter.drawEllipse(*shape_data.start, *shape_data.radius, *shape_data.radius);
     }
@@ -102,8 +112,16 @@ QPen CircleShape::getPen() const {
     return m_pen;
 }
 
+QBrush CircleShape::getBrush() const {
+    return m_brush;
+}
+
 void CircleShape::setPen(const QPen &pen) {
     m_pen = pen;
+}
+
+void CircleShape::setBrush(const QBrush &brush) {
+    m_brush = brush;
 }
 
 void CircleShape::setShapeData(const ShapeData_t& shape_data) {

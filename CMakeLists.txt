@@ -17,7 +17,7 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 # Binary 1: First Executable
 # ----------------------------------------------------
 add_executable(QtPaint
-    src/drawing_canvas.cpp src/shapes.cpp src/main.cpp
+    src/drawing_canvas.cpp src/shapes.cpp src/main.cpp src/icons.cpp
 )
 
 target_link_libraries(QtPaint PRIVATE

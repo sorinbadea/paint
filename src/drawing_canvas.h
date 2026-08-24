@@ -3,7 +3,6 @@
 #include "shapes.h"
 #include <QWidget>
 #include <QMouseEvent>
-#include <QGuiApplication>
 #include <QPointF>
 #include <QFile>
 #include <vector>
@@ -21,14 +20,16 @@ class DrawingCanvas : public QWidget {
 
 public:
     explicit DrawingCanvas(QWidget *parent);
-    void setMode(ToolMode mode);
     void undoLast();
     void clearAll();
     // serialize deserialize from/to file
     bool saveToFile(const QString &filePath) const;
     bool loadFromFile(const QString &filePath);
+    //setters
+    void setMode(const ToolMode& mode);
     void setPenWidth(int width);
-    void setColor(const QColor& color);
+    void setPaintColor(const QColor& color);
+    void setBrushColor(const QColor& brush);
     
 protected:
     void paintGrid(QPainter& painter, unsigned grid_width);
@@ -47,15 +48,11 @@ private:
     std::unique_ptr<Shape> m_shape;
     Shape* m_selectedShape;
     QColor m_drawing_color;
-    QColor m_preview_color;
     QColor m_selected_color;
-    QBrush m_drawing_qbrush;
-    QBrush m_preview_qbrush;
+    QColor m_brush_color;
     QBrush m_select_brush;
-    //store the pen of the selected shqpe
+    //store the pen and the brush of the selected shape
     QPen m_shape_pen;
-    //store the brush of the selected shape
     QBrush m_shape_brush;
 };
-
 #endif // DRAWINGCANVAS_H
