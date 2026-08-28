@@ -10,7 +10,7 @@ public:
         m_drawing_color(Qt::white) {
         m_canvas = std::make_unique<DrawingCanvas>(this);
         setCentralWidget(m_canvas.get());
-        setWindowTitle("Paint brush (Qt6)");
+        setWindowTitle("Paint-brush (Qt6)");
         resize(800, 600);
         createMenus();
     }
@@ -56,16 +56,16 @@ private:
         }
     }
 
-    QAction* colorPick(QToolBar* toolbar, const char *text,
+    QAction* colorPick(QToolBar* toolbar, const char *text, const std::function<QIcon(QColor)>& icon_creator,
         QColor initialColor, std::function<void(const QColor&)> onColorChanged) {
         QAction* colorAction = new QAction(tr(text), this);
-        colorAction->setIcon(createPencilIcon(initialColor));
+        colorAction->setIcon(icon_creator(initialColor));
         toolbar->addAction(colorAction);
-        connect(colorAction, &QAction::triggered, this, [this, colorAction, initialColor, onColorChanged]() mutable {
+        connect(colorAction, &QAction::triggered, this, [this, icon_creator, colorAction, initialColor, onColorChanged]() mutable {
             QColor chosen = QColorDialog::getColor(initialColor, this, tr("Select Color"));
             if (chosen.isValid()) {
                 initialColor = chosen;
-                colorAction->setIcon(createPencilIcon(chosen));
+                colorAction->setIcon(icon_creator(chosen));
                 onColorChanged(chosen); // Execute callback with new color!
             }
         });
@@ -156,12 +156,21 @@ private:
         toolsMenu->addAction(circleAction);
 
         // Rectangle option
-        //--------------
+        //-----------------
         QAction *rectangleAction = new QAction("&Rectangle Mode", this);
         connect(rectangleAction, &QAction::triggered, this, [this]() {
             m_canvas->setMode(ToolMode::Rectangle);
         });
         toolsMenu->addAction(rectangleAction);
+
+        // Polygon option
+        //--------------
+        QAction *polygonAction = new QAction("&Polygon Mode", this);
+        connect(polygonAction, &QAction::triggered, this, [this]() {
+            m_canvas->setMode(ToolMode::Polygon);
+        });
+        toolsMenu->addAction(polygonAction);
+
 
         // Edit Menu
         //------------
@@ -230,12 +239,12 @@ private:
         });
 
         // 5. Drawing color picker
-        colorPick(toolbar, "Pen Color", Qt::white, [this](const QColor& c) {
+        colorPick(toolbar, "Pen Color", createPencilIcon, Qt::white, [this](const QColor& c) {
             m_canvas->setPaintColor(c);
         });
 
         // 6. Brush color picker
-        colorPick(toolbar, "Brush Color", Qt::white, [this](const QColor& c) {
+        colorPick(toolbar, "Brush Color", createBrushIcon, Qt::white, [this](const QColor& c) {
             m_canvas->setBrushColor(c);
         });
     }

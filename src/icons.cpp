@@ -73,7 +73,7 @@ QIcon createDragIcon(int size, const QColor &dotColor) {
 
 QIcon createPencilIcon(const QColor &color) {
     QPixmap pixmap(16, 16);
-    pixmap.fill(color);
+    pixmap.fill(Qt::transparent);
 
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing);
@@ -120,5 +120,74 @@ QIcon createPencilIcon(const QColor &color) {
     painter.drawPolygon(eraser);
 
     painter.end();
+    return QIcon(pixmap);
+}
+
+QIcon createBrushIcon(const QColor &fillColor) {
+    QPixmap pixmap(24, 24);
+    pixmap.fill(Qt::transparent);
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    // --- A. Draw the Tilted Paint Bucket Body ---
+    QPainterPath bucketPath;
+    bucketPath.moveTo(6, 6);   // Top-left opening
+    bucketPath.lineTo(13, 13); // Top-right opening
+    bucketPath.lineTo(10, 20); // Bottom-right base
+    bucketPath.lineTo(3, 13);  // Bottom-left base
+    bucketPath.closeSubpath();
+
+    painter.setPen(QPen(QColor("#2c3e50"), 1.2)); // Dark border
+    painter.setBrush(QColor("#7f8c8d"));         // Metallic bucket metal
+    painter.drawPath(bucketPath);
+
+    // --- B. Draw Metal Bucket Handle ---
+    QPainterPath handlePath;
+    handlePath.moveTo(6, 6);
+    handlePath.quadTo(3, 2, 7, 2);
+    handlePath.quadTo(12, 2, 13, 13);
+
+    painter.setPen(QPen(QColor("#2c3e50"), 1.2, Qt::SolidLine, Qt::RoundCap));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawPath(handlePath);
+
+    // --- C. Paint Surface Inside Bucket Opening ---
+    QPainterPath openingPath;
+    openingPath.moveTo(6, 6);
+    openingPath.lineTo(13, 13);
+    openingPath.lineTo(11, 15);
+    openingPath.lineTo(4, 8);
+    openingPath.closeSubpath();
+
+    painter.setPen(QPen(fillColor.darker(130), 1));
+    painter.setBrush(fillColor);
+    painter.drawPath(openingPath);
+
+    // --- D. Paint Pour Spout / Liquid Stream ---
+    QPainterPath pourPath;
+    pourPath.moveTo(3, 13); // Starts from lower edge of bucket
+    pourPath.quadTo(1, 15, 2, 17);
+    pourPath.quadTo(4, 18, 5, 15);
+    pourPath.closeSubpath();
+
+    painter.setPen(QPen(fillColor.darker(130), 1));
+    painter.setBrush(fillColor);
+    painter.drawPath(pourPath);
+
+    // --- E. Liquid Drop at Bottom Tip (Hotspot location) ---
+    QPainterPath dropPath;
+    dropPath.moveTo(3, 20);
+    dropPath.quadTo(1, 22, 3, 23);
+    dropPath.quadTo(5, 22, 3, 20);
+    dropPath.closeSubpath();
+
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(fillColor);
+    painter.drawPath(dropPath);
+
+    painter.end();
+
+    // 2. Wrap and return as QIcon
     return QIcon(pixmap);
 }

@@ -2,6 +2,7 @@
 // 2. CONCRETE SHAPES (Line & Circle)
 // -------------------------------------------------------------
 #include "shapes.h"
+#include <QWidget>
 
 // ========================== LINE SHAPE ==========================
 LineShape::LineShape(const QLineF &line, const QPen &pen)
@@ -55,6 +56,9 @@ void LineShape::setPen(const QPen &pen) {
 
 void LineShape::setBrush(const QBrush &brush) {
     m_brush = brush;
+}
+
+void LineShape::addPoint(const QPointF& p) {
 }
 
 void LineShape::setShapeData(const ShapeData_t& shape_data) {
@@ -119,6 +123,9 @@ void RectangleShape::setPen(const QPen &pen) {
 
 void RectangleShape::setBrush(const QBrush &brush) {
     m_brush = brush;
+}
+
+void RectangleShape::addPoint(const QPointF& p) {
 }
 
 void RectangleShape::setShapeData(const ShapeData_t& shape_data) {
@@ -190,6 +197,9 @@ void CircleShape::setBrush(const QBrush &brush) {
     m_brush = brush;
 }
 
+void CircleShape::addPoint(const QPointF& p) {
+}
+
 void CircleShape::setShapeData(const ShapeData_t& shape_data) {
     if (shape_data.start && shape_data.end) {
         m_radius = std::hypot(shape_data.end.value().x()
@@ -199,4 +209,81 @@ void CircleShape::setShapeData(const ShapeData_t& shape_data) {
 
 void CircleShape::moveRelative(const QPointF &delta) {
     m_center = m_center + delta;
+}
+
+// ========================== POLYGON SHAPE ==========================
+PolygonShape::PolygonShape(const QPen &pen, const QBrush& brush)
+    : m_pen(pen), m_brush(brush) {
+}
+
+void PolygonShape::draw(QPainter &painter) const {
+    painter.setPen(m_pen);
+    painter.setBrush(m_brush);
+    if (m_points.isEmpty()) {
+        return;
+    }
+    painter.drawPolygon(m_points);
+}
+
+void PolygonShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
+    painter.setPen(m_pen);
+    painter.setBrush(m_brush);
+    // 1. Draw existing segments using drawPolyline
+    painter.drawPolyline(m_points);
+    painter.drawLine((*shape_data.points).last(), *shape_data.end);
+    // 3. Highlight individual vertices with small circles
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(Qt::red);
+    for (const QPointF &pt : *shape_data.points) {
+        painter.drawEllipse(pt, 3, 3);
+    }
+}
+
+ShapeType PolygonShape::type() const { 
+    return ShapeType::Polygon;
+}
+
+void PolygonShape::serialize(QDataStream &out) const {
+    out << m_points << m_pen << m_brush;
+}
+
+void PolygonShape::deserialize(QDataStream &in) {
+    in >> m_points >> m_pen >> m_brush;
+}
+
+bool PolygonShape::contains(const QPointF &point) const{
+    return m_points.containsPoint(point, Qt::OddEvenFill);
+}
+
+QPen PolygonShape::getPen() const {
+    return m_pen;
+}
+
+QBrush PolygonShape::getBrush() const {
+    return m_brush;
+}
+
+void PolygonShape::setPen(const QPen &pen) {
+    m_pen = pen;
+}
+
+void PolygonShape::setBrush(const QBrush &brush) {
+    m_brush = brush;
+}
+
+void PolygonShape::addPoint(const QPointF& qpoint) {
+    // qDebug() << "adding points";
+    m_points.append(qpoint);
+}
+
+void PolygonShape::setShapeData(const ShapeData_t& shape_data) {
+    /*if (shape_data.start && shape_data.end) {
+        m_rectangle.setTopLeft(shape_data.start.value());
+        m_rectangle.setBottomRight(shape_data.end.value());
+        m_rectangle = m_rectangle.normalized();
+    }*/
+}
+
+void PolygonShape::moveRelative(const QPointF &delta) {
+    m_points.translate(delta);
 }

@@ -15,7 +15,8 @@ constexpr int pen_width = 2;
 // -------------------------------------------------------------
 enum class ToolMode { Line, 
                     Circle, 
-                    Rectangle, 
+                    Rectangle,
+                    Polygon,
                     Select
                 };
 
@@ -36,7 +37,6 @@ public:
     void setBrushColor(const QColor& brush);
     
 protected:
-
     void paintEvent(QPaintEvent *) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
@@ -45,15 +45,17 @@ protected:
 private:
     void paintGrid(QPainter& painter, unsigned grid_width);
     ShapeType getShapeType(const ToolMode& tm) const;
+    void finalizeShape();
+    void polygonTip(const QMouseEvent *event);
 
     ToolMode m_mode;
     bool m_isDrawing;
     int m_pen_width;
-    QPointF m_startPos;
-    QPointF m_currentPos;
+    QPointF m_start_pos;
+    QPointF m_current_pos;
     std::vector<std::unique_ptr<Shape>> m_shapes;
     std::unique_ptr<Shape> m_shape;
-    Shape* m_selectedShape;
+    Shape* m_selected_shape;
     QColor m_drawing_color;
     QColor m_selected_color;
     QColor m_brush_color;
@@ -61,5 +63,8 @@ private:
     //store the pen and the brush of the selected shape
     QPen m_shape_pen;
     QBrush m_shape_brush;
+
+    // temporary
+    QPolygonF m_points;
 };
 #endif // DRAWINGCANVAS_H
