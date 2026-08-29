@@ -32,11 +32,11 @@ private:
         return QIcon(pixmap);
     }
     void addPenMenuToEdit(QMenu *editMenu) {
-        // 1. Create a "Pen Width" sub-menu inside Edit
+        // "Pen Width" sub-menu inside Edit
         QMenu *penSubMenu = editMenu->addMenu("&Pen Width");
         // Sample width values
         const QVector<int> widths = {1, 2, 3, 5, 8, 12};
-        // --- Option A: Standard QAction list with visual icons ---
+        // Standard QAction list with visual icons ---
         auto *actionGroup = new QActionGroup(penSubMenu);
         actionGroup->setExclusive(true);
         for (int w : widths) {
@@ -171,7 +171,6 @@ private:
         });
         toolsMenu->addAction(polygonAction);
 
-
         // Edit Menu
         //------------
         QMenu *editMenu = menuBar()->addMenu("&Edit");
@@ -201,23 +200,43 @@ private:
         });
         helpMenu->addAction(aboutAction);
 
-        // Add toolbar
-        // 1. Create the Toolbar
-        QToolBar *toolbar = addToolBar("Shape Tools");
-        toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+        // Create the Toolbars
+        // Left toolbar, Pen and Brush pickers
+        //-------------------------------------
+        left_toolbar = std::make_unique<QToolBar>("Pencils", this);
+        addToolBar(Qt::LeftToolBarArea, left_toolbar.get());
+        // 6. Drawing color picker
+        colorPick(left_toolbar.get(), "Pen Color", createPencilIcon, Qt::white, [this](const QColor& c) {
+            m_canvas->setPaintColor(c);
+        });
 
-        // 2. Add Line Action with custom icon
+        // 7. Brush color picker
+        colorPick(left_toolbar.get(), "Brush Color", createBrushIcon, Qt::white, [this](const QColor& c) {
+            m_canvas->setBrushColor(c);
+        });
+
+        // top tool bar, Line, Circle, Rectangle, Polygon and Select actions
+        //------------------------------------------------------------------
+        top_toolbar = std::make_unique<QToolBar>("Shape Tools", this);
+        QActionGroup *toolGroup = new QActionGroup(this);
+        toolGroup->setExclusive(true);
+        addToolBar(Qt::TopToolBarArea, top_toolbar.get());
+        top_toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+
+        // 1. Add Line Action with custom icon
         QAction *lineToolBarAction = new QAction(createLineIcon(), "Line", this);
         lineToolBarAction->setCheckable(true); // Useful for toggle mode selection
-        toolbar->addAction(lineToolBarAction);
+        top_toolbar->addAction(lineToolBarAction);
+        toolGroup->addAction(lineToolBarAction);
         connect(lineToolBarAction, &QAction::triggered, this, [this]() {
             m_canvas->setMode(ToolMode::Line);
         });
 
-        // 3. Add Circle Action with custom icon
+        // 2. Add Circle Action with custom icon
         QAction *circleToolBarAction = new QAction(createCircleIcon(), "Circle", this);
         circleToolBarAction->setCheckable(true);
-        toolbar->addAction(circleToolBarAction);
+        top_toolbar->addAction(circleToolBarAction);
+        toolGroup->addAction(circleToolBarAction);
         connect(circleToolBarAction, &QAction::triggered, this, [this]() {
             m_canvas->setMode(ToolMode::Circle);
         });
@@ -225,32 +244,35 @@ private:
         // 3. Add Circle Action with custom icon
         QAction *rectangleToolBarAction = new QAction(createRectangleIcon(), "Rectangle", this);
         rectangleToolBarAction->setCheckable(true);
-        toolbar->addAction(rectangleToolBarAction);
+        top_toolbar->addAction(rectangleToolBarAction);
+        toolGroup->addAction(rectangleToolBarAction);
         connect(rectangleToolBarAction, &QAction::triggered, this, [this]() {
             m_canvas->setMode(ToolMode::Rectangle);
         });
 
-        // 4. Add Select Action with custom icon
+        // 4. Add Polygon Action with custom icon
+        QAction *polygonToolBarAction = new QAction(createPolygonIcon(), "Polygon", this);
+        polygonToolBarAction->setCheckable(true);
+        top_toolbar->addAction(polygonToolBarAction);
+        toolGroup->addAction(polygonToolBarAction);
+        connect(polygonToolBarAction, &QAction::triggered, this, [this]() {
+            m_canvas->setMode(ToolMode::Polygon);
+        });
+
+        // 5. Add Select Action with custom icon
         QAction *selectToolBarAction = new QAction(createDragIcon(), "Select", this);
         selectToolBarAction->setCheckable(true);
-        toolbar->addAction(selectToolBarAction);
+        top_toolbar->addAction(selectToolBarAction);
+        toolGroup->addAction(selectToolBarAction);
         connect(selectToolBarAction, &QAction::triggered, this, [this]() {
             m_canvas->setMode(ToolMode::Select);
-        });
-
-        // 5. Drawing color picker
-        colorPick(toolbar, "Pen Color", createPencilIcon, Qt::white, [this](const QColor& c) {
-            m_canvas->setPaintColor(c);
-        });
-
-        // 6. Brush color picker
-        colorPick(toolbar, "Brush Color", createBrushIcon, Qt::white, [this](const QColor& c) {
-            m_canvas->setBrushColor(c);
         });
     }
 
     // private data
     std::unique_ptr<DrawingCanvas> m_canvas;
+    std::unique_ptr<QToolBar> top_toolbar;
+    std::unique_ptr<QToolBar> left_toolbar;
     QColor m_drawing_color;
     QColor m_brush_color;
 };
