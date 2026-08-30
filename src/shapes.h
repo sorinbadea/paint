@@ -44,6 +44,7 @@ public:
     virtual void addPoint(const QPointF& p) = 0;
     // for selecting and moving a shape
     virtual void moveRelative(const QPointF &delta) = 0;
+    virtual void zoomInOut(const qreal& factor) = 0;
     // seralize, de-serialize
     virtual void serialize(QDataStream &out) const = 0;
     virtual void deserialize(QDataStream &in) = 0;
@@ -68,6 +69,7 @@ public:
     void setShapeData(const ShapeData_t& shape_data) override;
     void addPoint(const QPointF& p) override;
     void moveRelative(const QPointF &delta) override;
+    void zoomInOut(const qreal& factor) override;
     void serialize(QDataStream &out) const override;
     void deserialize(QDataStream &in) override;
 
@@ -94,6 +96,7 @@ public:
     QPen getPen() const override;
     QBrush getBrush() const override;
     void moveRelative(const QPointF &delta) override;
+    void zoomInOut(const qreal& factor) override;
     void serialize(QDataStream &out) const override;
     void deserialize(QDataStream &in) override;
 
@@ -121,6 +124,7 @@ public:
     void setShapeData(const ShapeData_t& shape_data) override;
     void addPoint(const QPointF& p) override;
     void moveRelative(const QPointF &delta) override;
+    void zoomInOut(const qreal& factor) override;
     void serialize(QDataStream &out) const override;
     void deserialize(QDataStream &in) override;
 
@@ -148,6 +152,7 @@ public:
     void setShapeData(const ShapeData_t& shape_data) override;
     void addPoint(const QPointF& p) override;
     void moveRelative(const QPointF &delta) override;
+    void zoomInOut(const qreal& factor) override;
     void serialize(QDataStream &out) const override;
     void deserialize(QDataStream &in) override;
 

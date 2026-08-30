@@ -73,6 +73,9 @@ void LineShape::moveRelative(const QPointF &delta) {
     m_line.setP2(m_line.p2() + delta);
 }
 
+void LineShape::zoomInOut(const qreal& factor) {
+}
+
 // ========================== RECTANGLE SHAPE ==========================
 RectangleShape::RectangleShape(const QRectF &rectangle, const QPen &pen)
     : m_rectangle(rectangle), m_pen(pen) {
@@ -142,6 +145,15 @@ void RectangleShape::moveRelative(const QPointF &delta) {
     m_rectangle = m_rectangle.normalized();
 }
 
+void RectangleShape::zoomInOut(const qreal& factor) {
+    QPointF center = m_rectangle.center();
+    qreal newWidth = m_rectangle.width() * factor;
+    qreal newHeight = m_rectangle.height() * factor;
+    m_rectangle.setSize(QSizeF(newWidth, newHeight));
+    m_rectangle.moveCenter(center);
+}
+
+
 // ========================== CIRCLE SHAPE ==========================
 CircleShape::CircleShape(const QPointF &center, qreal radius, const QPen &pen, const QBrush &brush)
         : m_center(center), m_radius(radius), m_pen(pen), m_brush(brush) {}
@@ -209,6 +221,9 @@ void CircleShape::setShapeData(const ShapeData_t& shape_data) {
 
 void CircleShape::moveRelative(const QPointF &delta) {
     m_center = m_center + delta;
+}
+
+void CircleShape::zoomInOut(const qreal& factor) {
 }
 
 // ========================== POLYGON SHAPE ==========================
@@ -286,4 +301,16 @@ void PolygonShape::setShapeData(const ShapeData_t& shape_data) {
 
 void PolygonShape::moveRelative(const QPointF &delta) {
     m_points.translate(delta);
+}
+
+void PolygonShape::zoomInOut(const qreal& factor) {
+    if (m_points.isEmpty())
+        return;
+    QPointF center = m_points.boundingRect().center();
+    QTransform transform;
+    transform.translate(center.x(), center.y()); // Shift center to (0,0)
+    transform.scale(factor, factor);             // Scale
+    transform.translate(-center.x(), -center.y()); // Shift back
+
+    m_points = transform.map(m_points);
 }

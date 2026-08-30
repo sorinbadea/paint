@@ -16,8 +16,10 @@ DrawingCanvas::DrawingCanvas(QWidget *parent)
 }
 
 void DrawingCanvas::setMode(const ToolMode& mode) {
-    m_mode = mode;
-    m_isDrawing = false;
+    if (m_selected_shape == nullptr) {
+        m_mode = mode;
+        m_isDrawing = false;
+    }
 }
 
 void DrawingCanvas::setPenWidth(int width) {
@@ -85,11 +87,9 @@ void DrawingCanvas::finalizeShape() {
     m_shapes.push_back(std::move(m_shape));
 }
 
-void DrawingCanvas::polygonTip(const QMouseEvent *event) {
-    if (m_mode == ToolMode::Polygon) {
+void DrawingCanvas::polygonTip(const QMouseEvent *event, const QString& explanation) {
+    if (m_mode == ToolMode::Polygon || m_selected_shape) {
         QPoint globalPos = mapToGlobal(event->position().toPoint());
-        // Display text offset slightly from the cursor (e.g., +10px down & right)
-        QString explanation = QString("Mouse Right click to\nfinish the polygon");
         QToolTip::showText(globalPos + QPoint(10, 10), explanation, this);
     }
 }
@@ -105,8 +105,8 @@ void DrawingCanvas::paintEvent(QPaintEvent *) {
         shape->draw(painter);
 
     // Drawing mode
-    // B. Draw temporary preview
     if (m_isDrawing && m_shape) {
+        // Draw temporary preview
         // prepare the shape coordinates and colors for drawing
         ShapeData_t previewData;
         previewData.start = m_start_pos;
@@ -123,10 +123,15 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
         if (m_mode == ToolMode::Select) {
             // Select and drag mode
             //---------------------
-            for(const auto& shape : m_shapes) {   
+            if (m_selected_shape)
+                // if already selected do nothing
+                return;
+            for(const auto& shape : m_shapes)
                 if (shape->contains(event->position())) {
                     QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
-                    // qDebug() << "Selected shape of type: " << static_cast<int>(shape->type());
+                    // retrieve the pen and the brush of 
+                    // selected shape, will be used when the
+                    // shape will find his new position or zoom factor
                     m_selected_shape = shape.get();
                     m_current_pos = event->position();
                     m_shape_pen = shape->getPen();
@@ -135,9 +140,9 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
                     QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
                     shape->setPen(pencil);
                     shape->setBrush(m_select_brush);
+                    polygonTip(event, std::move(QString("Use the wheel to zoom-in zoom-out, right click to finalize")));
                     break;
                 }
-            }        
         }
         else {
             // drawing mode
@@ -171,24 +176,41 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
         }
         update();
     }
-    else if (event->button() == Qt::RightButton && m_shape && m_mode == ToolMode::Polygon) {
-        // finalize a polygon line
-        finalizeShape();
-        m_points.clear();
-        update();
-    }   
+    else if (event->button() == Qt::RightButton) {
+        if (m_shape) {
+            // the new shape is ready, set back
+            // the chosen pen and clear points in case of Polygon
+            finalizeShape();
+            if (m_mode == ToolMode::Polygon) {
+                // finalize the new added polygon shape
+                m_points.clear();
+            }
+            update();
+        }
+        // The shape was selected for moving or Zooming
+        else if (m_selected_shape) {
+            QGuiApplication::restoreOverrideCursor();
+            // Restore the brush and color
+            m_selected_shape->setPen(m_shape_pen);
+            m_selected_shape->setBrush(m_shape_brush);
+            m_selected_shape = nullptr;
+            m_isDrawing = false;
+            update();
+        }
+    }
 }
 
 void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
     if (m_isDrawing) {
-        // draw a hint for Polygon lines
-        polygonTip(event);
+        // draw a hint for polygon lines
+        polygonTip(event, std::move(QString("Mouse Right click to finish the polygon")));
         m_current_pos = event->position();
         ShapeData_t shape_data = {m_shape->type(), m_start_pos, m_current_pos, std::nullopt, m_points};
         m_shape->setShapeData(shape_data);
         update(); // Re-trigger paintEvent for preview
      } else if(m_selected_shape) {
-        // Dragging selected shape
+        // Dragging the selected shape
+        polygonTip(event, std::move(QString("Use the wheel to zoom-in zoom-out, right click to finalize")));
         QPointF delta = event->position() - m_current_pos;
         m_selected_shape->moveRelative(delta);
         m_current_pos = event->position();
@@ -197,24 +219,41 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
-    if(m_selected_shape) {
-        QGuiApplication::restoreOverrideCursor();
-        // Restore the brush and color of rthe selecetd shape
-        m_selected_shape->setPen(m_shape_pen);
-        m_selected_shape->setBrush(m_shape_brush);
-        m_selected_shape = nullptr;
-        update();
-    }
-    else if (event->button() == Qt::LeftButton && m_isDrawing) {
-        if (m_mode != ToolMode::Polygon) {
-            m_current_pos = event->position();
-            finalizeShape();
+    if (event->button() == Qt::LeftButton) {
+        if (m_selected_shape) {
+            polygonTip(event, std::move(QString("Use the wheel to zoom-in zoom-out, right click to finalize")));
         }
-        else {
-            polygonTip(event);
+        else if (m_isDrawing) {
+            if (m_mode != ToolMode::Polygon) {
+                // Line, Rectangle and Circle
+                m_current_pos = event->position();
+                finalizeShape();
+            }
+            else
+                // Polygon
+                polygonTip(event, std::move(QString("Right click to finish the polygon")));
         }
         update();
     }
+}
+
+void DrawingCanvas::wheelEvent(QWheelEvent *event) {
+     if(m_selected_shape) {
+        // 1. Determine scroll direction (positive = scroll up/zoom in, negative = scroll down/zoom out)
+        int delta = event->angleDelta().y();
+        if (delta == 0) return; // Ignore horizontal scrolling
+        // 2. Define the step ratio (e.g., 15% per wheel notch)
+        qreal stepFactor = (delta > 0) ? 1.15 : (1.0 / 1.15);
+        // 3. Update and clamp the accumulated zoom factor
+        qreal minZoom = 0.1;  // 10% minimum
+        qreal maxZoom = 20.0; // 2000% maximum
+        qreal zoom_factor = 1.0;
+        zoom_factor = qBound(minZoom, zoom_factor * stepFactor, maxZoom);
+        m_selected_shape->zoomInOut(zoom_factor);
+        // 4. trigger a redraw
+        update();
+        event->accept();
+     }
 }
 
 bool DrawingCanvas::saveToFile(const QString &filePath) const {
@@ -277,7 +316,6 @@ bool DrawingCanvas::loadFromFile(const QString &filePath) {
         }
         if (shape) {
             shape->deserialize(in);
-
             // Verify serialization of individual shape succeeded
             if (in.status() != QDataStream::Ok) {
                 m_shapes.clear();

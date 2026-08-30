@@ -11,7 +11,7 @@ public:
         m_canvas = std::make_unique<DrawingCanvas>(this);
         setCentralWidget(m_canvas.get());
         setWindowTitle("Paint-brush (Qt6)");
-        resize(800, 600);
+        resize(900, 600);
         createMenus();
     }
     ~MainWindow() {

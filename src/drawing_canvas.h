@@ -17,7 +17,8 @@ enum class ToolMode { Line,
                     Circle, 
                     Rectangle,
                     Polygon,
-                    Select
+                    Select,
+                    None
                 };
 
 class DrawingCanvas : public QWidget {
@@ -41,12 +42,13 @@ protected:
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
+    void wheelEvent(QWheelEvent *event) override;
 
 private:
     void paintGrid(QPainter& painter, unsigned grid_width);
     ShapeType getShapeType(const ToolMode& tm) const;
     void finalizeShape();
-    void polygonTip(const QMouseEvent *event);
+    void polygonTip(const QMouseEvent *event, const QString& explanation);
 
     ToolMode m_mode;
     bool m_isDrawing;
@@ -63,8 +65,6 @@ private:
     //store the pen and the brush of the selected shape
     QPen m_shape_pen;
     QBrush m_shape_brush;
-
-    // temporary
     QPolygonF m_points;
 };
 #endif // DRAWINGCANVAS_H
