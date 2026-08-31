@@ -87,13 +87,6 @@ void DrawingCanvas::finalizeShape() {
     m_shapes.push_back(std::move(m_shape));
 }
 
-void DrawingCanvas::polygonTip(const QMouseEvent *event, const QString& explanation) {
-    if (m_mode == ToolMode::Polygon || m_selected_shape) {
-        QPoint globalPos = mapToGlobal(event->position().toPoint());
-        QToolTip::showText(globalPos + QPoint(10, 10), explanation, this);
-    }
-}
-
 void DrawingCanvas::paintEvent(QPaintEvent *) {
     // allways create the QPainter object inside the paintEvent() method
     QPainter painter(this);
@@ -140,7 +133,8 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
                     QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
                     shape->setPen(pencil);
                     shape->setBrush(m_select_brush);
-                    polygonTip(event, std::move(QString("Use the wheel to zoom-in zoom-out, right click to finalize")));
+                    m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
+                        std::move(QString("Use the wheel to zoom-in zoom-out, right click to finalize")));
                     break;
                 }
         }
@@ -202,15 +196,19 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
 
 void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
     if (m_isDrawing) {
-        // draw a hint for polygon lines
-        polygonTip(event, std::move(QString("Mouse Right click to finish the polygon")));
+        // tool hint text
+        if (m_shape && m_mode == ToolMode::Polygon)
+            m_shape->toolHint(mapToGlobal(event->position().toPoint()),
+                std::move(QString("Mouse right click to finish the polygon")));
         m_current_pos = event->position();
         ShapeData_t shape_data = {m_shape->type(), m_start_pos, m_current_pos, std::nullopt, m_points};
         m_shape->setShapeData(shape_data);
         update(); // Re-trigger paintEvent for preview
-     } else if(m_selected_shape) {
+     } else if (m_selected_shape) {
         // Dragging the selected shape
-        polygonTip(event, std::move(QString("Use the wheel to zoom-in zoom-out, right click to finalize")));
+        // Show tool hint text
+        m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
+            std::move(QString("Use the wheel to zoom-in zoom-out, right click when done")));
         QPointF delta = event->position() - m_current_pos;
         m_selected_shape->moveRelative(delta);
         m_current_pos = event->position();
@@ -221,7 +219,8 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
 void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
     if (event->button() == Qt::LeftButton) {
         if (m_selected_shape) {
-            polygonTip(event, std::move(QString("Use the wheel to zoom-in zoom-out, right click to finalize")));
+            m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
+                std::move(QString("Use the wheel to zoom-in zoom-out, right click when done")));
         }
         else if (m_isDrawing) {
             if (m_mode != ToolMode::Polygon) {
@@ -231,7 +230,8 @@ void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
             }
             else
                 // Polygon
-                polygonTip(event, std::move(QString("Right click to finish the polygon")));
+                m_shape->toolHint(mapToGlobal(event->position().toPoint()),
+                    std::move(QString("Right click to finish the polygon")));
         }
         update();
     }
@@ -243,14 +243,17 @@ void DrawingCanvas::wheelEvent(QWheelEvent *event) {
         int delta = event->angleDelta().y();
         if (delta == 0) return; // Ignore horizontal scrolling
         // 2. Define the step ratio (e.g., 15% per wheel notch)
-        qreal stepFactor = (delta > 0) ? 1.15 : (1.0 / 1.15);
+        qreal stepFactor = (delta > 0) ? 1.10 : (1.0 / 1.10);
         // 3. Update and clamp the accumulated zoom factor
         qreal minZoom = 0.1;  // 10% minimum
         qreal maxZoom = 20.0; // 2000% maximum
         qreal zoom_factor = 1.0;
         zoom_factor = qBound(minZoom, zoom_factor * stepFactor, maxZoom);
         m_selected_shape->zoomInOut(zoom_factor);
-        // 4. trigger a redraw
+        // Display the tooltip near the cursor
+        m_selected_shape->toolHint(event->globalPosition().toPoint(),
+            std::move(QString("Use the mouse wheel to zoom, right click when done")));
+        // trigger a redraw
         update();
         event->accept();
      }

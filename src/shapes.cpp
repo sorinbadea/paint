@@ -2,7 +2,7 @@
 // 2. CONCRETE SHAPES (Line & Circle)
 // -------------------------------------------------------------
 #include "shapes.h"
-#include <QWidget>
+#include <QToolTip>
 
 // ========================== LINE SHAPE ==========================
 LineShape::LineShape(const QLineF &line, const QPen &pen)
@@ -74,6 +74,17 @@ void LineShape::moveRelative(const QPointF &delta) {
 }
 
 void LineShape::zoomInOut(const qreal& factor) {
+    // factor > 1.0 lengthens the line, factor < 1.0 shortens it
+    QPointF center = m_line.center();
+    // Scale vectors from center to endpoints
+    m_line.setP1(center + (m_line.p1() - center) * factor);
+    m_line.setP2(center + (m_line.p2() - center) * factor);
+}
+
+void LineShape::toolHint(const QPoint &point, const QString& explanation) {
+    // Display the tooltip near the cursor
+    // Parameters: pos, text, widget parent, rect boundary, duration in ms
+    QToolTip::showText(point + QPoint(10, 10), explanation, nullptr, QRect(), 2000);
 }
 
 // ========================== RECTANGLE SHAPE ==========================
@@ -153,6 +164,11 @@ void RectangleShape::zoomInOut(const qreal& factor) {
     m_rectangle.moveCenter(center);
 }
 
+void RectangleShape::toolHint(const QPoint &point, const QString& explanation) {
+    // Display the tooltip near the cursor
+    // Parameters: pos, text, widget parent, rect boundary, duration in ms
+    QToolTip::showText(point + QPoint(10, 10), explanation, nullptr, QRect(), 2000);
+}
 
 // ========================== CIRCLE SHAPE ==========================
 CircleShape::CircleShape(const QPointF &center, qreal radius, const QPen &pen, const QBrush &brush)
@@ -224,6 +240,13 @@ void CircleShape::moveRelative(const QPointF &delta) {
 }
 
 void CircleShape::zoomInOut(const qreal& factor) {
+    m_radius = m_radius * factor;
+}
+
+void CircleShape::toolHint(const QPoint &point, const QString& explanation) {
+    // Display the tooltip near the cursor
+    // Parameters: pos, text, widget parent, rect boundary, duration in ms
+    QToolTip::showText(point + QPoint(10, 10), explanation, nullptr, QRect(), 2000);
 }
 
 // ========================== POLYGON SHAPE ==========================
@@ -313,4 +336,10 @@ void PolygonShape::zoomInOut(const qreal& factor) {
     transform.translate(-center.x(), -center.y()); // Shift back
 
     m_points = transform.map(m_points);
+}
+
+void PolygonShape::toolHint(const QPoint &point, const QString& explanation) {
+    // Display the tooltip near the cursor
+    // Parameters: pos, text, widget parent, rect boundary, duration in ms
+    QToolTip::showText(point + QPoint(10, 10), explanation, nullptr, QRect(), 2000);
 }

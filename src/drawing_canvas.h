@@ -48,7 +48,6 @@ private:
     void paintGrid(QPainter& painter, unsigned grid_width);
     ShapeType getShapeType(const ToolMode& tm) const;
     void finalizeShape();
-    void polygonTip(const QMouseEvent *event, const QString& explanation);
 
     ToolMode m_mode;
     bool m_isDrawing;
