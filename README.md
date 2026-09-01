@@ -14,5 +14,5 @@ It allows the following operations:
 Remark:
 -some parts of the code were written using Google Gemini AI
 
-![App Screenshot](images/Screenshot.png)
+![App Screenshot](./Screenshot.png)
 
