@@ -79,12 +79,60 @@ void DrawingCanvas::paintGrid(QPainter& painter, unsigned grid_width)
 }
 
 void DrawingCanvas::finalizeShape() {
+    /*
+       mark as not drawing any more
+       set the pencil and brush
+       add the shape to existing shapes
+    */
     m_isDrawing = false;
     QPen pencil(QPen(m_drawing_color, m_pen_width, Qt::SolidLine));
     QBrush brush(m_brush_color, Qt::SolidPattern);
     m_shape->setPen(pencil);
     m_shape->setBrush(brush);
     m_shapes.push_back(std::move(m_shape));
+}
+
+void DrawingCanvas::keepShape() {
+    if (m_selected_shape) {
+        /* 
+          The shape was selected for zooming or moving
+          restore brushes and pencil
+        */
+        QGuiApplication::restoreOverrideCursor();
+        // Restore the brush and color
+        m_selected_shape->setPen(m_shape_pen);
+        m_selected_shape->setBrush(m_shape_brush);
+        m_selected_shape = nullptr;
+        m_isDrawing = false;
+        update();
+    }
+    else if (m_shape && m_mode == ToolMode::Polygon) {
+        /*
+          The Polygon shape is new, never selected so far
+        */
+        finalizeShape();
+        m_points.clear();
+        update();
+    }
+}
+
+void DrawingCanvas::removeShape() {
+    if (m_selected_shape) {
+        m_shapes.erase(
+            std::remove_if(m_shapes.begin(), m_shapes.end(),
+                [this](const std::unique_ptr<Shape>& shape) {
+                    return shape.get() == m_selected_shape;
+                }),
+            m_shapes.end()
+        );
+        QGuiApplication::restoreOverrideCursor();
+        m_selected_shape = nullptr;
+    update();
+    }
+}
+
+Shape* DrawingCanvas::isShapeSelected() const {
+    return m_selected_shape;
 }
 
 void DrawingCanvas::paintEvent(QPaintEvent *) {
@@ -169,28 +217,6 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
                 qDebug() << "Unknown shape..";
         }
         update();
-    }
-    else if (event->button() == Qt::RightButton) {
-        if (m_shape) {
-            // the new shape is ready, set back
-            // the chosen pen and clear points in case of Polygon
-            finalizeShape();
-            if (m_mode == ToolMode::Polygon) {
-                // finalize the new added polygon shape
-                m_points.clear();
-            }
-            update();
-        }
-        // The shape was selected for moving or Zooming
-        else if (m_selected_shape) {
-            QGuiApplication::restoreOverrideCursor();
-            // Restore the brush and color
-            m_selected_shape->setPen(m_shape_pen);
-            m_selected_shape->setBrush(m_shape_brush);
-            m_selected_shape = nullptr;
-            m_isDrawing = false;
-            update();
-        }
     }
 }
 
@@ -289,9 +315,8 @@ bool DrawingCanvas::loadFromFile(const QString &filePath) {
     if (in.status() != QDataStream::Ok) {
         return false;
     }
-
-    m_shapes.clear(); // Clear canvas only after confirming file header is valid
-    m_shapes.reserve(count); // Optimize vector allocations
+    // clear shape list
+    m_shapes.clear(); 
 
     for (quint32 i = 0; i < count; ++i) {
         quint32 rawType = 0;

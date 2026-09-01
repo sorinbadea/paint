@@ -36,6 +36,9 @@ public:
     void setPenWidth(int width);
     void setPaintColor(const QColor& color);
     void setBrushColor(const QColor& brush);
+    void keepShape();
+    void removeShape();
+    Shape* isShapeSelected() const;
     
 protected:
     void paintEvent(QPaintEvent *) override;
@@ -54,7 +57,7 @@ private:
     int m_pen_width;
     QPointF m_start_pos;
     QPointF m_current_pos;
-    std::vector<std::unique_ptr<Shape>> m_shapes;
+    std::list<std::unique_ptr<Shape>> m_shapes;
     std::unique_ptr<Shape> m_shape;
     Shape* m_selected_shape;
     QColor m_drawing_color;

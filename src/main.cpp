@@ -13,11 +13,29 @@ public:
         setWindowTitle("Paint-brush (Qt6)");
         resize(900, 600);
         createMenus();
+        // right click menu
+        this->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(this, &QWidget::customContextMenuRequested, 
+            this, &MainWindow::showContextMenu);
+
     }
     ~MainWindow() {
     }
 
 private:
+    void showContextMenu(const QPoint &pos) {
+        QMenu contextMenu(tr("Context Menu"), this);
+        if (m_canvas->isShapeSelected()) {
+            // propose the shape remove option only
+            // in case of select, zoom, darg operations
+            QAction *action1 = contextMenu.addAction("Remove it");
+            connect(action1, &QAction::triggered, this, [this]() {m_canvas->removeShape();});
+        }
+        QAction *action2 = contextMenu.addAction("Now is fine");
+        connect(action2, &QAction::triggered, this, [this]() {m_canvas->keepShape();});
+        contextMenu.exec(this->mapToGlobal(pos));
+    }
+
     QIcon createPenWidthIcon(int width) {
         QPixmap pixmap(40, 16);
         pixmap.fill(Qt::transparent);
