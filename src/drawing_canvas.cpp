@@ -111,7 +111,6 @@ void DrawingCanvas::keepShape() {
           The Polygon shape is new, never selected so far
         */
         finalizeShape();
-        m_points.clear();
         update();
     }
 }
@@ -154,7 +153,7 @@ void DrawingCanvas::paintEvent(QPaintEvent *) {
         previewData.end = m_current_pos;
         previewData.radius = std::hypot(m_current_pos.x() - m_start_pos.x(), m_current_pos.y() - m_start_pos.y());
         previewData.type = getShapeType(m_mode);
-        previewData.points = m_points;
+        previewData.points = m_shape->getPoints();
         m_shape->draw(painter, previewData);
     }
 }
@@ -170,9 +169,11 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
             for(const auto& shape : m_shapes)
                 if (shape->contains(event->position())) {
                     QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
-                    // retrieve the pen and the brush of 
-                    // selected shape, will be used when the
-                    // shape will find his new position or zoom factor
+                    /* 
+                       retrieve the pen and the brush of 
+                       selected shape, this info will be used when the
+                       shape will find his new position or zoomed-in zoomed-out
+                    */
                     m_selected_shape = shape.get();
                     m_current_pos = event->position();
                     m_shape_pen = shape->getPen();
@@ -192,26 +193,26 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
             m_start_pos =  m_current_pos = event->position();
             m_isDrawing = true;
             QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
+            QBrush brush(m_brush_color, Qt::SolidPattern);
             if (m_mode == ToolMode::Line) {
                 QLineF line(m_start_pos, m_current_pos);
-                m_shape = std::make_unique<LineShape>(line, pencil);
+                m_shape = std::make_unique<LineShape>(line, pencil, brush);
             }
             else if (m_mode == ToolMode::Circle) {
                 qreal radius = std::hypot(m_current_pos.x() - m_start_pos.x(), m_current_pos.y() - m_start_pos.y());
-                m_shape = std::make_unique<CircleShape>(m_start_pos, radius, pencil, m_select_brush);
+                m_shape = std::make_unique<CircleShape>(m_start_pos, radius, pencil, brush);
             }
             else if (m_mode == ToolMode::Rectangle) {
                 QRectF rect(m_start_pos, m_current_pos);
-                m_shape = std::make_unique<RectangleShape>(rect, pencil);
+                m_shape = std::make_unique<RectangleShape>(rect, pencil, brush);
             }
             else if (m_mode == ToolMode::Polygon) {
                 if (m_shape == nullptr) {
                     QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
-                    QBrush brush(m_brush_color, Qt::SolidPattern);
+                    
                     m_shape = std::make_unique<PolygonShape>(pencil, brush);
                 }
                 m_shape->addPoint(event->position());
-                m_points.append(event->position());
             }
             else
                 qDebug() << "Unknown shape..";
@@ -222,17 +223,17 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
 
 void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
     if (m_isDrawing) {
-        // tool hint text
         if (m_shape && m_mode == ToolMode::Polygon)
+            // tool hint text in case of Polygon
             m_shape->toolHint(mapToGlobal(event->position().toPoint()),
                 std::move(QString("Mouse right click to finish the polygon")));
         m_current_pos = event->position();
-        ShapeData_t shape_data = {m_shape->type(), m_start_pos, m_current_pos, std::nullopt, m_points};
+        ShapeData_t shape_data = {m_shape->type(), m_start_pos, m_current_pos, std::nullopt, m_shape->getPoints()};
         m_shape->setShapeData(shape_data);
         update(); // Re-trigger paintEvent for preview
      } else if (m_selected_shape) {
         // Dragging the selected shape
-        // Show tool hint text
+        // Show tool hint for Zoom-in Zoom-out
         m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
             std::move(QString("Use the wheel to zoom-in zoom-out, right click when done")));
         QPointF delta = event->position() - m_current_pos;
@@ -265,7 +266,7 @@ void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
 
 void DrawingCanvas::wheelEvent(QWheelEvent *event) {
      if(m_selected_shape) {
-        // 1. Determine scroll direction (positive = scroll up/zoom in, negative = scroll down/zoom out)
+        // Determine scroll direction (positive = scroll up/zoom in, negative = scroll down/zoom out)
         int delta = event->angleDelta().y();
         if (delta == 0) return; // Ignore horizontal scrolling
         // 2. Define the step ratio (e.g., 15% per wheel notch)
@@ -292,9 +293,9 @@ bool DrawingCanvas::saveToFile(const QString &filePath) const {
     }
     QDataStream out(&file);
     out.setVersion(QDataStream::Qt_6_0);
-    // 1. Write total count of shapes
+    // Write total count of shapes
     out << static_cast<quint32>(m_shapes.size());
-    // 2. Write each shape's Type ID followed by its serialized data
+    // Write each shape's Type ID followed by its serialized data
     for (const auto &shape : m_shapes) {
         out << static_cast<quint32>(shape->type());
         shape->serialize(out);

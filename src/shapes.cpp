@@ -5,8 +5,8 @@
 #include <QToolTip>
 
 // ========================== LINE SHAPE ==========================
-LineShape::LineShape(const QLineF &line, const QPen &pen)
-    : m_line(line), m_pen(pen) {}
+LineShape::LineShape(const QLineF &line, const QPen &pen, const QBrush& brush)
+    : m_line(line), m_pen(pen), m_brush(brush) {}
 
 void LineShape::draw(QPainter &painter) const {
     painter.setPen(m_pen);
@@ -42,11 +42,11 @@ bool LineShape::contains(const QPointF &point) const{
     return std::abs(totalLength - splitLength) < EPSILON; // 1.0 is the epsilon for tolerance
 }
 
-QPen LineShape::getPen() const {
+const QPen& LineShape::getPen() const {
     return m_pen;
 }
 
-QBrush LineShape::getBrush() const {
+const QBrush& LineShape::getBrush() const {
     return m_brush;
 }
 
@@ -59,6 +59,10 @@ void LineShape::setBrush(const QBrush &brush) {
 }
 
 void LineShape::addPoint(const QPointF& p) {
+}
+
+std::optional<QPolygonF> LineShape::getPoints() {
+    return std::nullopt;
 }
 
 void LineShape::setShapeData(const ShapeData_t& shape_data) {
@@ -88,8 +92,8 @@ void LineShape::toolHint(const QPoint &point, const QString& explanation) {
 }
 
 // ========================== RECTANGLE SHAPE ==========================
-RectangleShape::RectangleShape(const QRectF &rectangle, const QPen &pen)
-    : m_rectangle(rectangle), m_pen(pen) {
+RectangleShape::RectangleShape(const QRectF &rectangle, const QPen &pen, const QBrush& brush)
+    : m_rectangle(rectangle), m_pen(pen), m_brush(brush) {
         m_rectangle = m_rectangle.normalized();
     }
 
@@ -123,11 +127,11 @@ bool RectangleShape::contains(const QPointF &point) const{
     return m_rectangle.contains(point);
 }
 
-QPen RectangleShape::getPen() const {
+const QPen& RectangleShape::getPen() const {
     return m_pen;
 }
 
-QBrush RectangleShape::getBrush() const {
+const QBrush& RectangleShape::getBrush() const {
     return m_brush;
 }
 
@@ -140,6 +144,10 @@ void RectangleShape::setBrush(const QBrush &brush) {
 }
 
 void RectangleShape::addPoint(const QPointF& p) {
+}
+
+std::optional<QPolygonF> RectangleShape::getPoints() {
+    return std::nullopt;
 }
 
 void RectangleShape::setShapeData(const ShapeData_t& shape_data) {
@@ -209,11 +217,11 @@ bool CircleShape::contains(const QPointF &point) const{
     return distance <= m_radius;
 }
 
-QPen CircleShape::getPen() const {
+const QPen& CircleShape::getPen() const {
     return m_pen;
 }
 
-QBrush CircleShape::getBrush() const {
+const QBrush& CircleShape::getBrush() const {
     return m_brush;
 }
 
@@ -223,6 +231,10 @@ void CircleShape::setPen(const QPen &pen) {
 
 void CircleShape::setBrush(const QBrush &brush) {
     m_brush = brush;
+}
+
+std::optional<QPolygonF> CircleShape::getPoints() {
+    return std::nullopt;
 }
 
 void CircleShape::addPoint(const QPointF& p) {
@@ -293,11 +305,11 @@ bool PolygonShape::contains(const QPointF &point) const{
     return m_points.containsPoint(point, Qt::OddEvenFill);
 }
 
-QPen PolygonShape::getPen() const {
+const QPen& PolygonShape::getPen() const {
     return m_pen;
 }
 
-QBrush PolygonShape::getBrush() const {
+const QBrush& PolygonShape::getBrush() const {
     return m_brush;
 }
 
@@ -314,12 +326,11 @@ void PolygonShape::addPoint(const QPointF& qpoint) {
     m_points.append(qpoint);
 }
 
+std::optional<QPolygonF> PolygonShape::getPoints() {
+    return m_points;
+}
+
 void PolygonShape::setShapeData(const ShapeData_t& shape_data) {
-    /*if (shape_data.start && shape_data.end) {
-        m_rectangle.setTopLeft(shape_data.start.value());
-        m_rectangle.setBottomRight(shape_data.end.value());
-        m_rectangle = m_rectangle.normalized();
-    }*/
 }
 
 void PolygonShape::moveRelative(const QPointF &delta) {

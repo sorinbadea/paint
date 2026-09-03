@@ -48,25 +48,49 @@ protected:
     void wheelEvent(QWheelEvent *event) override;
 
 private:
+    // paint grid
     void paintGrid(QPainter& painter, unsigned grid_width);
+
+    //returns the shape type
     ShapeType getShapeType(const ToolMode& tm) const;
+
+    // add the new shape on the Shape's list, restore brush and pen
     void finalizeShape();
 
+    // Attributes
+    // drawing mode, Circle, Line, Selection..
     ToolMode m_mode;
+
+    // indicates if a new shape is drawing
     bool m_isDrawing;
-    int m_pen_width;
+
+    // position
     QPointF m_start_pos;
     QPointF m_current_pos;
+
+    // list of existing shapes
     std::list<std::unique_ptr<Shape>> m_shapes;
+
+    /*
+        The shape is in the process of being drawn
+    */
     std::unique_ptr<Shape> m_shape;
+
+    /* 
+        points to the selected shape,
+        can be zoomed-in zoomed-out, moved or removed
+    */
     Shape* m_selected_shape;
+
+    // drawing color, brush and width
+    int m_pen_width;
     QColor m_drawing_color;
     QColor m_selected_color;
     QColor m_brush_color;
     QBrush m_select_brush;
+
     //store the pen and the brush of the selected shape
     QPen m_shape_pen;
     QBrush m_shape_brush;
-    QPolygonF m_points;
 };
 #endif // DRAWINGCANVAS_H
