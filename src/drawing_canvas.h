@@ -18,6 +18,7 @@ enum class ToolMode { Line,
                     Rectangle,
                     Polygon,
                     Select,
+                    Group,
                     None
                 };
 
@@ -36,9 +37,13 @@ public:
     void setPenWidth(int width);
     void setPaintColor(const QColor& color);
     void setBrushColor(const QColor& brush);
+    // getter
+    Shape* isShapeSelected() const;
+    // miscelaneous
     void keepShape();
     void removeShape();
-    Shape* isShapeSelected() const;
+    bool groupSelection();
+    
     
 protected:
     void paintEvent(QPaintEvent *) override;
@@ -61,12 +66,18 @@ private:
     // drawing mode, Circle, Line, Selection..
     ToolMode m_mode;
 
-    // indicates if a new shape is drawing
+    // indicates if a new shape is drawing or grouping operation
     bool m_isDrawing;
+    bool m_grouping;
 
     // position
     QPointF m_start_pos;
     QPointF m_current_pos;
+
+    /*
+        The shapes beeing grouped  
+    */
+    std::list<Shape*> m_group_shapes;
 
     // list of existing shapes
     std::list<std::unique_ptr<Shape>> m_shapes;
@@ -88,9 +99,16 @@ private:
     QColor m_selected_color;
     QColor m_brush_color;
     QBrush m_select_brush;
+    QBrush m_grouping_brush;
 
-    //store the pen and the brush of the selected shape
-    QPen m_shape_pen;
-    QBrush m_shape_brush;
+    /*
+        store the pen and brush either for the selected shape
+        or for a group of selected shapes
+    */
+    struct PenBrush {
+        QPen pen;
+        QBrush brush;
+    };
+    std::map<Shape*, struct PenBrush> m_saved_pen_brush;
 };
 #endif // DRAWINGCANVAS_H

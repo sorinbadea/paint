@@ -61,8 +61,8 @@ void LineShape::setBrush(const QBrush &brush) {
 void LineShape::addPoint(const QPointF& p) {
 }
 
-std::optional<QPolygonF> LineShape::getPoints() {
-    return std::nullopt;
+QPolygonF LineShape::getPoints() {
+    return QPolygonF({m_line.p1(), m_line.p2()});
 }
 
 void LineShape::setShapeData(const ShapeData_t& shape_data) {
@@ -146,8 +146,8 @@ void RectangleShape::setBrush(const QBrush &brush) {
 void RectangleShape::addPoint(const QPointF& p) {
 }
 
-std::optional<QPolygonF> RectangleShape::getPoints() {
-    return std::nullopt;
+QPolygonF RectangleShape::getPoints() {
+    return QPolygonF(m_rectangle);
 }
 
 void RectangleShape::setShapeData(const ShapeData_t& shape_data) {
@@ -233,8 +233,23 @@ void CircleShape::setBrush(const QBrush &brush) {
     m_brush = brush;
 }
 
-std::optional<QPolygonF> CircleShape::getPoints() {
-    return std::nullopt;
+QPolygonF CircleShape::getPoints() {
+    /*
+        transform a circle into a 32 segments polygon;
+        Will be used for the grouping operation when is necessary
+        to evaluate if the selection zone overlaps a circle
+    */
+    QPolygonF polygon;
+    unsigned int segments = 32;
+    polygon.reserve(segments);
+    qreal angleStep = (2.0 * M_PI) / segments;
+    for (int i = 0; i < segments; ++i) {
+        qreal angle = i * angleStep;
+        qreal x = m_center.x() + m_radius * qCos(angle);
+        qreal y = m_center.y() + m_radius * qSin(angle);
+        polygon.append(QPointF(x, y));
+    }
+    return polygon;
 }
 
 void CircleShape::addPoint(const QPointF& p) {
@@ -322,11 +337,10 @@ void PolygonShape::setBrush(const QBrush &brush) {
 }
 
 void PolygonShape::addPoint(const QPointF& qpoint) {
-    // qDebug() << "adding points";
     m_points.append(qpoint);
 }
 
-std::optional<QPolygonF> PolygonShape::getPoints() {
+QPolygonF PolygonShape::getPoints() {
     return m_points;
 }
 
@@ -345,7 +359,6 @@ void PolygonShape::zoomInOut(const qreal& factor) {
     transform.translate(center.x(), center.y()); // Shift center to (0,0)
     transform.scale(factor, factor);             // Scale
     transform.translate(-center.x(), -center.y()); // Shift back
-
     m_points = transform.map(m_points);
 }
 

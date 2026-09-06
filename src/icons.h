@@ -26,9 +26,10 @@ constexpr unsigned ICON_SIZE = 30;
 QIcon   createLineIcon(unsigned size = ICON_SIZE);
 QIcon   createCircleIcon(unsigned size = ICON_SIZE);
 QIcon   createRectangleIcon(unsigned size = ICON_SIZE);
-QIcon   createDragIcon(unsigned size = ICON_SIZE, const QColor &dotColor = QColor(10, 10, 10));
+QIcon   createSelectIcon(unsigned size = ICON_SIZE, const QColor &dotColor = QColor(10, 10, 10));
 QIcon   createPencilIcon(const QColor &color);
 QIcon   createBrushIcon(const QColor &color);
 QIcon   createPolygonIcon();
+QIcon   createGroupIcon(unsigned size = ICON_SIZE, const QColor &dotColor = QColor(10, 10, 10));
 
 #endif

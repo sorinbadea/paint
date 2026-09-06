@@ -41,7 +41,7 @@ QIcon createRectangleIcon(unsigned size) {
     return QIcon(pixmap);
 }
 
-QIcon createDragIcon(unsigned size, const QColor &dotColor) {
+QIcon createSelectIcon(unsigned size, const QColor &dotColor) {
     // 1. Create a transparent pixmap buffer
     QPixmap pixmap(size, size);
     pixmap.fill(Qt::transparent);
@@ -214,4 +214,42 @@ QIcon createPolygonIcon() {
     painter.drawPolygon(polygon);
     painter.end();
     return QIcon(pixmap);
+}
+
+QIcon createGroupIcon(unsigned size, const QColor &color) {
+    QPixmap pixmap(size, size);
+    pixmap.fill(Qt::transparent);
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    qreal margin = size * 0.1;
+    qreal innerArea = size - (2 * margin);
+
+    // Draw the outer grouping container (dashed border)
+    QPen borderPen(color, size * 0.04, Qt::DashLine, Qt::SquareCap, Qt::MiterJoin);
+    painter.setPen(borderPen);
+    painter.setBrush(Qt::NoBrush);
+
+    QRectF outerRect(margin, margin, innerArea, innerArea);
+    painter.drawRoundedRect(outerRect, size * 0.08, size * 0.08);
+    // Draw the grouped inner items (two distinct shapes inside)
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(color);
+    // First item: Top-Left Rectangle
+    QRectF item1(
+        margin + innerArea * 0.18, 
+        margin + innerArea * 0.18, 
+        innerArea * 0.32, 
+        innerArea * 0.32
+    );
+    painter.drawRoundedRect(item1, size * 0.04, size * 0.04);
+    // Second item: Bottom-Right Circle
+    qreal circleRadius = innerArea * 0.18;
+    QPointF circleCenter(
+        margin + innerArea * 0.68, 
+        margin + innerArea * 0.68
+    );
+    painter.drawEllipse(circleCenter, circleRadius, circleRadius);
+    return pixmap;
 }

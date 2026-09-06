@@ -42,7 +42,7 @@ public:
     virtual void setBrush(const QBrush &brush) = 0;
     virtual void setShapeData(const ShapeData_t& shape_data) = 0;
     virtual void addPoint(const QPointF& p) = 0;
-    virtual std::optional<QPolygonF> getPoints() = 0;
+    virtual QPolygonF getPoints() = 0;
     // for selecting and moving a shape
     virtual void moveRelative(const QPointF &delta) = 0;
     virtual void zoomInOut(const qreal& factor) = 0;
@@ -70,7 +70,7 @@ public:
     void setPen(const QPen &pen) override;
     void setBrush(const QBrush &brush) override;
     void setShapeData(const ShapeData_t& shape_data) override;
-    std::optional<QPolygonF> getPoints() override;
+    QPolygonF getPoints() override;
     void addPoint(const QPointF& p) override;
     void moveRelative(const QPointF &delta) override;
     void zoomInOut(const qreal& factor) override;
@@ -97,7 +97,7 @@ public:
     void setPen(const QPen &pen) override;
     void setBrush(const QBrush &brush) override;
     void setShapeData(const ShapeData_t& shape_data) override;
-    std::optional<QPolygonF> getPoints() override;
+    QPolygonF getPoints() override;
     void addPoint(const QPointF& p) override;
     const QPen& getPen() const override;
     const QBrush& getBrush() const override;
@@ -130,7 +130,7 @@ public:
     void setBrush(const QBrush &brush) override;
     void setShapeData(const ShapeData_t& shape_data) override;
     void addPoint(const QPointF& p) override;
-    std::optional<QPolygonF> getPoints() override;
+    QPolygonF getPoints() override;
     void moveRelative(const QPointF &delta) override;
     void zoomInOut(const qreal& factor) override;
     void toolHint(const QPoint &point, const QString& explanation) override;
@@ -160,7 +160,7 @@ public:
     void setBrush(const QBrush &brush) override;
     void setShapeData(const ShapeData_t& shape_data) override;
     void addPoint(const QPointF& p) override;
-    std::optional<QPolygonF> getPoints() override;
+    QPolygonF getPoints() override;
     void moveRelative(const QPointF &delta) override;
     void zoomInOut(const qreal& factor) override;
     void toolHint(const QPoint &point, const QString& explanation) override;

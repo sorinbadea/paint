@@ -5,12 +5,14 @@
 DrawingCanvas::DrawingCanvas(QWidget *parent)
     : QWidget(parent),
     m_isDrawing(false),
+    m_grouping(false),
     m_selected_shape(nullptr),
     m_pen_width(2),
     m_drawing_color(QColor("#0284c7")),
     m_selected_color(QColor("#e3d01f")),
     m_brush_color(QColor("#1e4db428")),
-    m_select_brush(QBrush(QColor("rgba(152, 102, 144, 0.14)"), Qt::DiagCrossPattern)) {
+    m_grouping_brush(QBrush(QColor(0, 0, 128, 64))),
+    m_select_brush(QBrush(Qt::darkGray, Qt::DiagCrossPattern)) {
     setBackgroundRole(QPalette::Base); 
     setAutoFillBackground(true);
 }
@@ -78,18 +80,61 @@ void DrawingCanvas::paintGrid(QPainter& painter, unsigned grid_width)
     }
 }
 
+bool DrawingCanvas::groupSelection() {
+    // the selecvted area
+    QRectF rect(m_start_pos, m_current_pos);
+    rect = rect.normalized();
+    for(const auto& shape : m_shapes) {
+        if (shape->type() == ShapeType::Rectangle)
+            return true;
+    }
+    return false;
+}
+
 void DrawingCanvas::finalizeShape() {
     /*
-       mark as not drawing any more
-       set the pencil and brush
-       add the shape to existing shapes
+       - reset the drawing flag, set the pencil and brush
+         for the new shape, add the shape to existing shapes
+       - handle the grouping case
     */
+    if (!m_shape)
+        return;
+    // reset drawing flag
     m_isDrawing = false;
-    QPen pencil(QPen(m_drawing_color, m_pen_width, Qt::SolidLine));
-    QBrush brush(m_brush_color, Qt::SolidPattern);
-    m_shape->setPen(pencil);
-    m_shape->setBrush(brush);
-    m_shapes.push_back(std::move(m_shape));
+
+    if (m_grouping) {
+        // build the rectangle to group several shapes
+        QRectF rectangle(m_start_pos, m_current_pos);
+
+        // compute the shapes beeing grouped
+        for(const auto& shape : m_shapes) {
+            QPolygonF polygon = shape->getPoints();
+            if (polygon.intersects(rectangle)) {
+                QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
+                /* 
+                    set the grouping highlight, new brush and pencil
+                    save pencil and brush of the selected shapes
+                */
+                struct PenBrush pb{shape->getPen(), shape->getBrush()};
+                auto [it, inserted] = m_saved_pen_brush.try_emplace(shape.get(), pb);
+                assert(inserted);
+                shape->setPen(pencil);
+                shape->setBrush(m_select_brush);
+                m_group_shapes.push_back(shape.get());
+            }
+        }
+        // debug
+        // qDebug() << "grouping feature, start pos " << m_start_pos << " end position " << m_current_pos << " grouping " << m_group_shapes.size();
+        m_grouping = false;
+    }
+    else {
+        // store the new shape
+        QPen pencil(QPen(m_drawing_color, m_pen_width, Qt::SolidLine));
+        QBrush brush(m_brush_color, Qt::SolidPattern);
+        m_shape->setPen(pencil);
+        m_shape->setBrush(brush);
+        m_shapes.push_back(std::move(m_shape));
+    }
 }
 
 void DrawingCanvas::keepShape() {
@@ -99,11 +144,15 @@ void DrawingCanvas::keepShape() {
           restore brushes and pencil
         */
         QGuiApplication::restoreOverrideCursor();
-        // Restore the brush and color
-        m_selected_shape->setPen(m_shape_pen);
-        m_selected_shape->setBrush(m_shape_brush);
+        // Restore the brush and color of the selected shape
+        assert(m_saved_pen_brush.size()==1);
+        auto it = m_saved_pen_brush.find(m_selected_shape);
+        assert(it != m_saved_pen_brush.end());
+        m_selected_shape->setPen(it->second.pen);
+        m_selected_shape->setBrush(it->second.brush);
         m_selected_shape = nullptr;
         m_isDrawing = false;
+        m_saved_pen_brush.clear();
         update();
     }
     else if (m_shape && m_mode == ToolMode::Polygon) {
@@ -140,14 +189,15 @@ void DrawingCanvas::paintEvent(QPaintEvent *) {
     painter.setRenderHint(QPainter::Antialiasing);
     paintGrid(painter, 16); // Draw grid with 16px spacing
 
-    // A. Draw all saved shapes in the order they were created
     for (const auto &shape : m_shapes)
         shape->draw(painter);
 
     // Drawing mode
     if (m_isDrawing && m_shape) {
-        // Draw temporary preview
-        // prepare the shape coordinates and colors for drawing
+        /* 
+            draw temporary preview,
+            prepare the shape coordinates and colors for drawing
+        */
         ShapeData_t previewData;
         previewData.start = m_start_pos;
         previewData.end = m_current_pos;
@@ -160,11 +210,16 @@ void DrawingCanvas::paintEvent(QPaintEvent *) {
 
 void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
-        if (m_mode == ToolMode::Select) {
+        if (m_group_shapes.size() > 0) {
+            // grouping shapes case
+            QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
+            m_current_pos = event->position();
+        }
+        else if (m_mode == ToolMode::Select) {
             // Select and drag mode
             //---------------------
             if (m_selected_shape)
-                // if already selected do nothing
+                // if the shape is already selected do nothing
                 return;
             for(const auto& shape : m_shapes)
                 if (shape->contains(event->position())) {
@@ -174,11 +229,15 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
                        selected shape, this info will be used when the
                        shape will find his new position or zoomed-in zoomed-out
                     */
-                    m_selected_shape = shape.get();
+                    assert(m_selected_shape == nullptr);
+                    assert(m_saved_pen_brush.size() == 0);
+                    m_selected_shape = shape.get(); 
+                    struct PenBrush pb{shape->getPen(), shape->getBrush()};
+                    auto [it, inserted] = m_saved_pen_brush.try_emplace(m_selected_shape, pb);
+                    assert(inserted);
                     m_current_pos = event->position();
-                    m_shape_pen = shape->getPen();
-                    m_shape_brush = shape->getBrush();
-                    // set the pen for the highlighted object
+
+                    // set the pen and brush for the highlighted object
                     QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
                     shape->setPen(pencil);
                     shape->setBrush(m_select_brush);
@@ -209,13 +268,18 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
             else if (m_mode == ToolMode::Polygon) {
                 if (m_shape == nullptr) {
                     QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
-                    
                     m_shape = std::make_unique<PolygonShape>(pencil, brush);
                 }
                 m_shape->addPoint(event->position());
             }
+            else if (m_mode == ToolMode::Group) {
+                QRectF rect(m_start_pos, m_current_pos);
+                QPen pencil(QPen(Qt::darkGray, 2, Qt::DashLine));
+                m_shape = std::make_unique<RectangleShape>(rect, pencil, m_grouping_brush);
+                m_grouping = true;
+            }
             else
-                qDebug() << "Unknown shape..";
+                qDebug() << "Mouse press event, unknown drawing mode..";
         }
         update();
     }
@@ -223,15 +287,22 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
 
 void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
     if (m_isDrawing) {
-        if (m_shape && m_mode == ToolMode::Polygon)
+        // Drawing mode
+        // return if no new shape
+        if (!m_shape)
+            return;
+
+        if (m_mode == ToolMode::Polygon)
             // tool hint text in case of Polygon
             m_shape->toolHint(mapToGlobal(event->position().toPoint()),
                 std::move(QString("Mouse right click to finish the polygon")));
+
         m_current_pos = event->position();
         ShapeData_t shape_data = {m_shape->type(), m_start_pos, m_current_pos, std::nullopt, m_shape->getPoints()};
         m_shape->setShapeData(shape_data);
         update(); // Re-trigger paintEvent for preview
-     } else if (m_selected_shape) {
+
+     } else if (m_selected_shape != nullptr) {
         // Dragging the selected shape
         // Show tool hint for Zoom-in Zoom-out
         m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
@@ -241,24 +312,53 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
         m_current_pos = event->position();
         update();
     }
+    else if (m_group_shapes.size() > 0) {
+        // grouping case
+        for(const auto& shape : m_group_shapes) {
+            QPointF delta = event->position() - m_current_pos;
+            shape->moveRelative(delta);
+        }
+        m_current_pos = event->position();
+        update();
+    }
 }
 
 void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
     if (event->button() == Qt::LeftButton) {
-        if (m_selected_shape) {
+        //  one single shape is selected
+        if (m_selected_shape != nullptr) {
             m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
                 std::move(QString("Use the wheel to zoom-in zoom-out, right click when done")));
         }
         else if (m_isDrawing) {
+            // Drawing case
             if (m_mode != ToolMode::Polygon) {
                 // Line, Rectangle and Circle
                 m_current_pos = event->position();
+                // Store the new shape
                 finalizeShape();
             }
             else
                 // Polygon
                 m_shape->toolHint(mapToGlobal(event->position().toPoint()),
                     std::move(QString("Right click to finish the polygon")));
+        }
+        else if (m_group_shapes.size() > 0) {
+            /*
+                Grouping case
+                restore shape and brush for the selected shapes
+            */
+            m_shape.reset();
+            for(const auto& shape : m_group_shapes) {
+                auto it = m_saved_pen_brush.find(shape);
+                assert(it != m_saved_pen_brush.end());
+                shape->setPen(it->second.pen);
+                shape->setBrush(it->second.brush);
+            }
+            m_group_shapes.clear();
+            m_saved_pen_brush.clear();
+            QGuiApplication::restoreOverrideCursor();
+            m_mode = ToolMode::None;
         }
         update();
     }

@@ -8,6 +8,7 @@ It allows the following operations:
 - select a shape by pressing the left mouse button, than drag;
   or zooming in/out using the wheel;
 - remove a selected shape;
+- group a set of shapes, than drag and change position
 - change the pen width, color and brush color;
 - save current work that load it later;
 
@@ -15,4 +16,5 @@ Remark:
 -some parts of the code were written using Google Gemini AI
 
 ![App Screenshot](./screenshots/Screenshot2.png)
+![App Screenshot](./screenshots/Screenshot3.png)
 

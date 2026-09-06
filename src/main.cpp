@@ -27,7 +27,7 @@ private:
         QMenu contextMenu(tr("Context Menu"), this);
         if (m_canvas->isShapeSelected()) {
             // propose the shape remove option only
-            // in case of select, zoom, darg operations
+            // in case of select, zoom, or drag operations
             QAction *action1 = contextMenu.addAction("Remove it");
             connect(action1, &QAction::triggered, this, [this]() {m_canvas->removeShape();});
         }
@@ -199,7 +199,7 @@ private:
         connect(undoAction, &QAction::triggered, m_canvas.get(), &DrawingCanvas::undoLast);
         editMenu->addAction(undoAction);
 
-        // Add the pen width selection menu
+        // Add the undo menu
         addPenMenuToEdit(editMenu);
 
         // Clear option
@@ -278,12 +278,21 @@ private:
         });
 
         // 5. Add Select Action with custom icon
-        QAction *selectToolBarAction = new QAction(createDragIcon(), "Select", this);
+        QAction *selectToolBarAction = new QAction(createSelectIcon(), "Select", this);
         selectToolBarAction->setCheckable(true);
         top_toolbar->addAction(selectToolBarAction);
         toolGroup->addAction(selectToolBarAction);
         connect(selectToolBarAction, &QAction::triggered, this, [this]() {
             m_canvas->setMode(ToolMode::Select);
+        });
+
+        // 6. Add Group shapes option
+        QAction *groupToolBarAction = new QAction(createGroupIcon(), "Group", this);
+        groupToolBarAction->setCheckable(true);
+        top_toolbar->addAction(groupToolBarAction);
+        toolGroup->addAction(groupToolBarAction);
+        connect(groupToolBarAction, &QAction::triggered, this, [this]() {
+            m_canvas->setMode(ToolMode::Group);
         });
     }
 
