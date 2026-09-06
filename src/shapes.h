@@ -175,5 +175,4 @@ private:
     QBrush m_brush;
 };
 
-
 #endif

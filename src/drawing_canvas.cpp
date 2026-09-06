@@ -8,10 +8,10 @@ DrawingCanvas::DrawingCanvas(QWidget *parent)
     m_grouping(false),
     m_selected_shape(nullptr),
     m_pen_width(2),
-    m_drawing_color(QColor("#0284c7")),
-    m_selected_color(QColor("#e3d01f")),
-    m_brush_color(QColor("#1e4db428")),
-    m_grouping_brush(QBrush(QColor(0, 0, 128, 64))),
+    m_drawing_color(Qt::blue),
+    m_selected_color(Qt::darkYellow),
+    m_brush_color(Qt::cyan),
+    m_grouping_brush(QColor(200, 0, 0, 128)), // semi transparent brush
     m_select_brush(QBrush(Qt::darkGray, Qt::DiagCrossPattern)) {
     setBackgroundRole(QPalette::Base); 
     setAutoFillBackground(true);
@@ -66,8 +66,8 @@ void DrawingCanvas::paintGrid(QPainter& painter, unsigned grid_width)
     painter.fillRect(rect(), Qt::white);
     int w = width();
     int h = height();
-    QPen minorPen(QColor("#e6e6e6"), 1);
-    QPen majorPen(QColor("#7f9bc6"), 1);
+    QPen minorPen(Qt::lightGray, 1);
+    QPen majorPen(Qt::gray, 2);
     // Draw Vertical Lines
     for (int x = 0, lineCount = 0; x < w; x += grid_width, ++lineCount) {
         painter.setPen((lineCount % 5 == 0) ? majorPen : minorPen);
@@ -78,17 +78,6 @@ void DrawingCanvas::paintGrid(QPainter& painter, unsigned grid_width)
         painter.setPen((lineCount % 5 == 0) ? majorPen : minorPen);
         painter.drawLine(0, y, w, y);
     }
-}
-
-bool DrawingCanvas::groupSelection() {
-    // the selecvted area
-    QRectF rect(m_start_pos, m_current_pos);
-    rect = rect.normalized();
-    for(const auto& shape : m_shapes) {
-        if (shape->type() == ShapeType::Rectangle)
-            return true;
-    }
-    return false;
 }
 
 void DrawingCanvas::finalizeShape() {
@@ -174,6 +163,7 @@ void DrawingCanvas::removeShape() {
             m_shapes.end()
         );
         QGuiApplication::restoreOverrideCursor();
+        m_saved_pen_brush.clear();
         m_selected_shape = nullptr;
     update();
     }
@@ -219,7 +209,7 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
             // Select and drag mode
             //---------------------
             if (m_selected_shape)
-                // if the shape is already selected do nothing
+                // if the shape is already selected, do nothing
                 return;
             for(const auto& shape : m_shapes)
                 if (shape->contains(event->position())) {
@@ -229,7 +219,6 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
                        selected shape, this info will be used when the
                        shape will find his new position or zoomed-in zoomed-out
                     */
-                    assert(m_selected_shape == nullptr);
                     assert(m_saved_pen_brush.size() == 0);
                     m_selected_shape = shape.get(); 
                     struct PenBrush pb{shape->getPen(), shape->getBrush()};

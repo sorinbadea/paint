@@ -42,10 +42,9 @@ public:
     // miscelaneous
     void keepShape();
     void removeShape();
-    bool groupSelection();
-    
     
 protected:
+    // methods called by QT
     void paintEvent(QPaintEvent *) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
@@ -75,7 +74,7 @@ private:
     QPointF m_current_pos;
 
     /*
-        The shapes beeing grouped  
+        The shapes beeing grouped
     */
     std::list<Shape*> m_group_shapes;
 
@@ -93,7 +92,7 @@ private:
     */
     Shape* m_selected_shape;
 
-    // drawing color, brush and width
+    // drawing color, brush and pen width
     int m_pen_width;
     QColor m_drawing_color;
     QColor m_selected_color;
