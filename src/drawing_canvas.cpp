@@ -61,6 +61,13 @@ ShapeType DrawingCanvas::getShapeType(const ToolMode& tm) const {
     return ShapeType::None;
 }
 
+void DrawingCanvas::setZoomFactor(const qreal& zoom_factor) {
+    if (m_selected_shape) {
+        m_selected_shape->zoomInOut(zoom_factor);
+        update();
+    }
+}
+
 void DrawingCanvas::paintGrid(QPainter& painter, unsigned grid_width)
 {
     painter.fillRect(rect(), Qt::white);
@@ -126,7 +133,7 @@ void DrawingCanvas::finalizeShape() {
     }
 }
 
-void DrawingCanvas::keepShape() {
+void DrawingCanvas::restoreShape() {
     if (m_selected_shape) {
         /* 
           The shape was selected for zooming or moving
@@ -146,6 +153,8 @@ void DrawingCanvas::keepShape() {
     }
     else if (m_shape && m_mode == ToolMode::Polygon) {
         /*
+          This section is available as a callback when
+          Right click -> "Keep it"
           The Polygon shape is new, never selected so far
         */
         finalizeShape();
@@ -185,7 +194,7 @@ void DrawingCanvas::paintEvent(QPaintEvent *) {
     // Drawing mode
     if (m_isDrawing && m_shape) {
         /* 
-            draw temporary preview,
+            draw a preview,
             prepare the shape coordinates and colors for drawing
         */
         ShapeData_t previewData;
@@ -208,34 +217,39 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
         else if (m_mode == ToolMode::Select) {
             // Select and drag mode
             //---------------------
-            if (m_selected_shape)
-                // if the shape is already selected, do nothing
-                return;
+            if (m_selected_shape) {
+                if (!m_selected_shape->contains(event->position())) {
+                    // mouse click outside the selected shape, restore shape
+                    restoreShape();
+                    update();
+                }
+            }
+            else {
+                // iterate in reverse order into shapes
+                for (auto it = m_shapes.crbegin(); it != m_shapes.crend(); ++it) {
+                    Shape* shape = it->get();
+                    if (shape->contains(event->position())) {
+                        QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
+                        /* 
+                        retrieve the pen and the brush of 
+                        selected shape, this info will be used when the
+                        shape will find his new position or after zoom-in zoom-out
+                        */
+                        assert(m_saved_pen_brush.size() == 0);
+                        m_selected_shape = shape;
+                        struct PenBrush pb{shape->getPen(), shape->getBrush()};
+                        auto [it, inserted] = m_saved_pen_brush.try_emplace(m_selected_shape, pb);
+                        assert(inserted);
+                        m_current_pos = event->position();
 
-            // iterate in reverse order into shapes
-            for (auto it = m_shapes.crbegin(); it != m_shapes.crend(); ++it) {
-                Shape* shape = it->get();
-                if (shape->contains(event->position())) {
-                    QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
-                    /* 
-                       retrieve the pen and the brush of 
-                       selected shape, this info will be used when the
-                       shape will find his new position or after zoom-in zoom-out
-                    */
-                    assert(m_saved_pen_brush.size() == 0);
-                    m_selected_shape = shape;
-                    struct PenBrush pb{shape->getPen(), shape->getBrush()};
-                    auto [it, inserted] = m_saved_pen_brush.try_emplace(m_selected_shape, pb);
-                    assert(inserted);
-                    m_current_pos = event->position();
-
-                    // set the pen and brush for the highlighted object
-                    QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
-                    shape->setPen(pencil);
-                    shape->setBrush(m_select_brush);
-                    m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
-                        std::move(QString("Use the wheel to zoom-in zoom-out, right click to finalize")));
-                    break;
+                        // set the pen and brush for the highlighted object
+                        QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
+                        shape->setPen(pencil);
+                        shape->setBrush(m_select_brush);
+                        m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
+                            std::move(QString("Use the wheel to zoom-in zoom-out, right click to finalize")));
+                        break;
+                    }
                 }
             }
         }
@@ -274,6 +288,7 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
             else
                 qDebug() << "Mouse press event, unknown drawing mode..";
         }
+        event->accept();
         update();
     }
 }
@@ -291,7 +306,9 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
                 std::move(QString("Mouse right click to finish the polygon")));
 
         m_current_pos = event->position();
-        ShapeData_t shape_data = {m_shape->type(), m_start_pos, m_current_pos, std::nullopt, m_shape->getPoints()};
+        ShapeData_t shape_data = {
+            m_shape->type(), m_start_pos, m_current_pos, std::nullopt, m_shape->getPoints()
+        };
         m_shape->setShapeData(shape_data);
         update(); // Re-trigger paintEvent for preview
 
@@ -314,6 +331,7 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
         m_current_pos = event->position();
         update();
     }
+    event->accept();
 }
 
 void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
@@ -362,14 +380,15 @@ void DrawingCanvas::wheelEvent(QWheelEvent *event) {
         // Determine scroll direction (positive = scroll up/zoom in, negative = scroll down/zoom out)
         int delta = event->angleDelta().y();
         if (delta == 0) return; // Ignore horizontal scrolling
-        // 2. Define the step ratio (e.g., 15% per wheel notch)
+        // 2. Define the step ratio (e.g., 10% per wheel notch)
         qreal stepFactor = (delta > 0) ? 1.10 : (1.0 / 1.10);
         // 3. Update and clamp the accumulated zoom factor
         qreal minZoom = 0.1;  // 10% minimum
-        qreal maxZoom = 20.0; // 2000% maximum
+        qreal maxZoom = 10.0; // 2000% maximum
         qreal zoom_factor = 1.0;
         zoom_factor = qBound(minZoom, zoom_factor * stepFactor, maxZoom);
         m_selected_shape->zoomInOut(zoom_factor);
+        // qDebug() << "zoom factor " << zoom_factor;
         // Display the tooltip near the cursor
         m_selected_shape->toolHint(event->globalPosition().toPoint(),
             std::move(QString("Use the mouse wheel to zoom, right click when done")));

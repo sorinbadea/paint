@@ -24,15 +24,22 @@ public:
 
 private:
     void showContextMenu(const QPoint &pos) {
+        /*
+            Context menu popping-up on mouse right click
+        */
         QMenu contextMenu(tr("Context Menu"), this);
         if (m_canvas->isShapeSelected()) {
-            // propose the shape remove option only
-            // in case of select, zoom, or drag operations
-            QAction *action1 = contextMenu.addAction("Remove it");
-            connect(action1, &QAction::triggered, this, [this]() {m_canvas->removeShape();});
+            QAction *action_zoom_in = contextMenu.addAction("Zoom In");
+            connect(action_zoom_in, &QAction::triggered, this, [this]() {m_canvas->setZoomFactor(1.1);});
+
+            QAction *action_zoom_out = contextMenu.addAction("Zoom Out");
+            connect(action_zoom_out, &QAction::triggered, this, [this]() {m_canvas->setZoomFactor(0.9);});
+
+            QAction *action_remove = contextMenu.addAction("Remove it");
+            connect(action_remove, &QAction::triggered, this, [this]() {m_canvas->removeShape();});
         }
-        QAction *action2 = contextMenu.addAction("Now is fine");
-        connect(action2, &QAction::triggered, this, [this]() {m_canvas->keepShape();});
+        QAction *action_keep = contextMenu.addAction("Keep it");
+        connect(action_keep, &QAction::triggered, this, [this]() {m_canvas->restoreShape();});
         contextMenu.exec(this->mapToGlobal(pos));
     }
 

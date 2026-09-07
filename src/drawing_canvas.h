@@ -37,10 +37,11 @@ public:
     void setPenWidth(int width);
     void setPaintColor(const QColor& color);
     void setBrushColor(const QColor& brush);
+    void setZoomFactor(const qreal& zoom_factor);
     // getter
     Shape* isShapeSelected() const;
     // miscelaneous
-    void keepShape();
+    void restoreShape();
     void removeShape();
     
 protected:
@@ -58,7 +59,8 @@ private:
     //returns the shape type
     ShapeType getShapeType(const ToolMode& tm) const;
 
-    // add the new shape on the Shape's list, restore brush and pen
+    // - add the new shape on the Shape's list, restore brush and pen;
+    // - handle the case of finalizing the grouping rectangle;
     void finalizeShape();
 
     // Attributes
@@ -82,7 +84,7 @@ private:
     std::list<std::unique_ptr<Shape>> m_shapes;
 
     /*
-        new shape beeing drawn
+        new shape beeing drawn, including grouping rectangle
     */
     std::unique_ptr<Shape> m_shape;
 
@@ -109,5 +111,8 @@ private:
         QBrush brush;
     };
     std::map<Shape*, struct PenBrush> m_saved_pen_brush;
+
+    // zoom factor
+    qreal m_zoom_factor;
 };
 #endif // DRAWINGCANVAS_H
