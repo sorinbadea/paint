@@ -78,11 +78,11 @@ private:
     */
     std::list<Shape*> m_group_shapes;
 
-    // list of existing shapes
+    // list of existing shapes, used when paintEvent is called
     std::list<std::unique_ptr<Shape>> m_shapes;
 
     /*
-        The shape is in the process of being drawn
+        new shape beeing drawn
     */
     std::unique_ptr<Shape> m_shape;
 

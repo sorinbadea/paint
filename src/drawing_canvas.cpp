@@ -82,8 +82,8 @@ void DrawingCanvas::paintGrid(QPainter& painter, unsigned grid_width)
 
 void DrawingCanvas::finalizeShape() {
     /*
-       - reset the drawing flag, set the pencil and brush
-         for the new shape, add the shape to existing shapes
+       - reset the drawing flag, set the pencil and brush for the new shape;
+       - add the shape to existing shapes
        - handle the grouping case
     */
     if (!m_shape)
@@ -211,16 +211,19 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
             if (m_selected_shape)
                 // if the shape is already selected, do nothing
                 return;
-            for(const auto& shape : m_shapes)
+
+            // iterate in reverse order into shapes
+            for (auto it = m_shapes.crbegin(); it != m_shapes.crend(); ++it) {
+                Shape* shape = it->get();
                 if (shape->contains(event->position())) {
                     QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
                     /* 
                        retrieve the pen and the brush of 
                        selected shape, this info will be used when the
-                       shape will find his new position or zoomed-in zoomed-out
+                       shape will find his new position or after zoom-in zoom-out
                     */
                     assert(m_saved_pen_brush.size() == 0);
-                    m_selected_shape = shape.get(); 
+                    m_selected_shape = shape;
                     struct PenBrush pb{shape->getPen(), shape->getBrush()};
                     auto [it, inserted] = m_saved_pen_brush.try_emplace(m_selected_shape, pb);
                     assert(inserted);
@@ -234,6 +237,7 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
                         std::move(QString("Use the wheel to zoom-in zoom-out, right click to finalize")));
                     break;
                 }
+            }
         }
         else {
             // drawing mode
