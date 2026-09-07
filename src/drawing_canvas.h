@@ -10,6 +10,7 @@
 #include <cmath>
 
 constexpr int pen_width = 2;
+
 // -------------------------------------------------------------
 // 3. CANVAS WIDGET
 // -------------------------------------------------------------
@@ -21,6 +22,7 @@ enum class ToolMode { Line,
                     Group,
                     None
                 };
+constexpr ShapeType getShapeType(ToolMode tm) noexcept;
 
 class DrawingCanvas : public QWidget {
     Q_OBJECT
@@ -55,9 +57,6 @@ protected:
 private:
     // paint grid
     void paintGrid(QPainter& painter, unsigned grid_width);
-
-    //returns the shape type
-    ShapeType getShapeType(const ToolMode& tm) const;
 
     // - add the new shape on the Shape's list, restore brush and pen;
     // - handle the case of finalizing the grouping rectangle;

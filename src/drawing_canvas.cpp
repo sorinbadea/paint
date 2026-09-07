@@ -2,6 +2,16 @@
 #include "shapes.h"
 #include "drawing_canvas.h"
 
+constexpr ShapeType getShapeType(ToolMode tm) noexcept {
+    switch (tm) {
+        case ToolMode::Line:      return ShapeType::Line;
+        case ToolMode::Circle:    return ShapeType::Circle;
+        case ToolMode::Rectangle: return ShapeType::Rectangle;
+        case ToolMode::Polygon:   return ShapeType::Polygon;
+        default:                  return ShapeType::None;
+    }
+}
+
 DrawingCanvas::DrawingCanvas(QWidget *parent)
     : QWidget(parent),
     m_isDrawing(false),
@@ -47,18 +57,6 @@ void DrawingCanvas::clearAll() {
     m_shapes.clear();
     m_isDrawing = false;
     update();
-}
-
-ShapeType DrawingCanvas::getShapeType(const ToolMode& tm) const {
-    if (tm == ToolMode::Line)
-        return ShapeType::Line;
-    else if (tm == ToolMode::Circle)
-        return ShapeType::Circle;
-    else if (tm == ToolMode::Rectangle)
-        return ShapeType::Rectangle;
-    else if (tm == ToolMode::Polygon)
-        return ShapeType::Polygon;  
-    return ShapeType::None;
 }
 
 void DrawingCanvas::setZoomFactor(const qreal& zoom_factor) {
