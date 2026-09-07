@@ -16,5 +16,5 @@ Remark:
 -some parts of the code were written using Google Gemini AI
 
 ![App Screenshot](./screenshots/screenshot1.png)
-![App Screenshot](./screenshots/screenshot2.png)
+![App Screenshot](./screenshots/Screenshot2.png)
 
