@@ -2,10 +2,14 @@
 #define SHAPES_H
 
 #include <QPainter>
+#include <QPainterPath>
 #include <QPen>
 #include <QBrush>
 
 constexpr double EPSILON = 1.0; // Tolerance for point-on-line checks
+constexpr qreal handle_size = 8.0;
+constexpr qreal hit_padding = 4.0;
+constexpr qreal min_radius = 4.0;
 
 enum class ShapeType : quint32 {
     Line = 1,
@@ -13,6 +17,15 @@ enum class ShapeType : quint32 {
     Rectangle = 3,
     Polygon = 4,
     None
+};
+
+enum HandlePosition {
+    None,
+    TopCenter,
+    BottomCenter,
+    LeftCenter,
+    RightCenter,
+    Inside
 };
 
 typedef struct {
@@ -29,25 +42,44 @@ typedef struct {
 class Shape {
 public:
     virtual ~Shape() = default;
+
+    // for Shape cloning
+    virtual std::unique_ptr<Shape> clone() const = 0;
+
     //draw methods
     virtual void draw(QPainter &painter) const = 0;
     virtual void draw(QPainter &painter, const ShapeData_t& shape_data) const = 0;
+    virtual void drawSelect(QPainter &painter) const = 0;
+
     // check if the current position overlaps an existing shape
     virtual bool contains(const QPointF &point) const = 0;
+
+    // a different value than None means a hook was clicked
+    virtual HandlePosition hookTest(const QPointF& pt) const = 0;
+
     // getter setters
     virtual ShapeType type() const = 0;
     virtual const QPen& getPen() const = 0;
     virtual const QBrush& getBrush() const = 0;
+    virtual QPolygonF getPoints() = 0;
+
     virtual void setPen(const QPen &pen) = 0;
     virtual void setBrush(const QBrush &brush) = 0;
     virtual void setShapeData(const ShapeData_t& shape_data) = 0;
     virtual void addPoint(const QPointF& p) = 0;
-    virtual QPolygonF getPoints() = 0;
+
     // for selecting and moving a shape
     virtual void moveRelative(const QPointF &delta) = 0;
+
+    // for zooming horizontaly or verticaly
+    virtual void resizeShape(const QPointF &delta, const HandlePosition hp) = 0;
+
+    // zoom in zoom out
     virtual void zoomInOut(const qreal& factor) = 0;
+
     // tool tip
     virtual void toolHint(const QPoint &point, const QString& explanation) = 0;
+
     // seralize, de-serialize
     virtual void serialize(QDataStream &out) const = 0;
     virtual void deserialize(QDataStream &in) = 0;
@@ -60,10 +92,13 @@ class LineShape : public Shape {
 public:
     LineShape() = default;
     LineShape(const QLineF &line, const QPen &pen, const QBrush& brush);
+    std::unique_ptr<Shape> clone() const override;
     void draw(QPainter &painter) const override;
     void draw(QPainter &painter, const ShapeData_t& shape_data) const override;
+    void drawSelect(QPainter &painter) const override;
     ShapeType type() const override;
     bool contains(const QPointF &point) const override;
+    HandlePosition hookTest(const QPointF& pt) const override;
     // getter setters
     const QPen& getPen() const override;
     const QBrush& getBrush() const override;
@@ -73,6 +108,7 @@ public:
     QPolygonF getPoints() override;
     void addPoint(const QPointF& p) override;
     void moveRelative(const QPointF &delta) override;
+    void resizeShape(const QPointF &delta, const HandlePosition hp) override;
     void zoomInOut(const qreal& factor) override;
     void toolHint(const QPoint &point, const QString& explanation) override;
     void serialize(QDataStream &out) const override;
@@ -90,9 +126,12 @@ class CircleShape : public Shape {
 public:
     CircleShape() = default;
     CircleShape(const QPointF &center, qreal radius, const QPen &pen, const QBrush &brush);
+    std::unique_ptr<Shape> clone() const override;
     void draw(QPainter &painter) const override;
     void draw(QPainter &painter, const ShapeData_t& shape_data) const override;
+    void drawSelect(QPainter &painter) const override;
     ShapeType type() const override;
+    HandlePosition hookTest(const QPointF& pt) const override;
     bool contains(const QPointF &point) const override;
     void setPen(const QPen &pen) override;
     void setBrush(const QBrush &brush) override;
@@ -101,6 +140,7 @@ public:
     void addPoint(const QPointF& p) override;
     const QPen& getPen() const override;
     const QBrush& getBrush() const override;
+    void resizeShape(const QPointF &delta, const HandlePosition hp) override;
     void moveRelative(const QPointF &delta) override;
     void zoomInOut(const qreal& factor) override;
     void toolHint(const QPoint &point, const QString& explanation) override;
@@ -113,16 +153,20 @@ private:
     QBrush m_brush;
     //coordinates and radius
     QPointF m_center;
-    qreal m_radius;
+    qreal m_radius_x;
+    qreal m_radius_y;
 };
 
 class RectangleShape : public Shape {
 public:
     RectangleShape() = default;
     RectangleShape(const QRectF &rect, const QPen &pen, const QBrush& brush);
+    std::unique_ptr<Shape> clone() const override;
     void draw(QPainter &painter) const override;
     void draw(QPainter &painter, const ShapeData_t& shape_data) const override;
+    void drawSelect(QPainter &painter) const override;
     ShapeType type() const override;
+    HandlePosition hookTest(const QPointF& pt) const override;
     bool contains(const QPointF &point) const override;
     const QPen& getPen() const override;
     const QBrush& getBrush() const override;
@@ -132,12 +176,14 @@ public:
     void addPoint(const QPointF& p) override;
     QPolygonF getPoints() override;
     void moveRelative(const QPointF &delta) override;
+    void resizeShape(const QPointF &delta, const HandlePosition hp) override;
     void zoomInOut(const qreal& factor) override;
     void toolHint(const QPoint &point, const QString& explanation) override;
     void serialize(QDataStream &out) const override;
     void deserialize(QDataStream &in) override;
 
 private:
+    QRectF getHandleRect(const QPointF& center) const;
     //coordinates
     QRectF m_rectangle;
     //pen brushes..
@@ -149,10 +195,12 @@ class PolygonShape : public Shape {
 public:
     PolygonShape() = default;
     PolygonShape(const QPen &pen, const QBrush& brush);
+    std::unique_ptr<Shape> clone() const override;
     void draw(QPainter &painter) const override;
     void draw(QPainter &painter, const ShapeData_t& shape_data) const override;
-    void drawPoly(QPainter &painter, bool is_drawing);
+    void drawSelect(QPainter &painter) const override;
     ShapeType type() const override;
+    HandlePosition hookTest(const QPointF& pt) const override;
     bool contains(const QPointF &point) const override;
     const QPen& getPen() const override;
     const QBrush& getBrush() const override;
@@ -162,6 +210,7 @@ public:
     void addPoint(const QPointF& p) override;
     QPolygonF getPoints() override;
     void moveRelative(const QPointF &delta) override;
+    void resizeShape(const QPointF &delta, const HandlePosition hp) override;
     void zoomInOut(const qreal& factor) override;
     void toolHint(const QPoint &point, const QString& explanation) override;
     void serialize(QDataStream &out) const override;

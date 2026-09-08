@@ -7,10 +7,13 @@ It allows the following operations:
 - draw a Line, Circle, Rectangle and Polygon lines.
 - select a shape by pressing the left mouse button, than drag;
   or zooming in/out using the wheel;
+- select a shape than zoom vrically or horizontally
+  by pulling one of the 4 hooks (so far work only for Rectangle)
 - remove a selected shape;
 - group a set of shapes, than drag and change position
 - change the pen width, color and brush color;
 - save current work that load it later;
+- clone a selectes shape (Copy/Paste)
 
 Remark:
 -some parts of the code were written using Google Gemini AI

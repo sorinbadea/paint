@@ -66,6 +66,13 @@ void DrawingCanvas::setZoomFactor(const qreal& zoom_factor) {
     }
 }
 
+void DrawingCanvas::zommInOut(const qreal& zoom_factor) {
+    for(const auto& shape : m_shapes) {
+        shape->zoomInOut(zoom_factor);
+    }
+    update();
+}
+
 void DrawingCanvas::paintGrid(QPainter& painter, unsigned grid_width)
 {
     painter.fillRect(rect(), Qt::white);
@@ -117,7 +124,6 @@ void DrawingCanvas::finalizeShape() {
                 m_group_shapes.push_back(shape.get());
             }
         }
-        // debug
         // qDebug() << "grouping feature, start pos " << m_start_pos << " end position " << m_current_pos << " grouping " << m_group_shapes.size();
         m_grouping = false;
     }
@@ -135,7 +141,7 @@ void DrawingCanvas::restoreShape() {
     if (m_selected_shape) {
         /* 
           The shape was selected for zooming or moving
-          restore brushes and pencil
+          restore brushes and pencil, restore mouse cursor
         */
         QGuiApplication::restoreOverrideCursor();
         // Restore the brush and color of the selected shape
@@ -152,7 +158,7 @@ void DrawingCanvas::restoreShape() {
     else if (m_shape && m_mode == ToolMode::Polygon) {
         /*
           This section is available as a callback when
-          Right click -> "Keep it"
+          drawing a Polygon, Right click, than click on "Done";
           The Polygon shape is new, never selected so far
         */
         finalizeShape();
@@ -176,6 +182,20 @@ void DrawingCanvas::removeShape() {
     }
 }
 
+void DrawingCanvas::cloneShape() {
+    assert(m_shape == nullptr);
+    assert(m_selected_shape != nullptr);
+    m_shape = m_selected_shape->clone();
+    auto it = m_saved_pen_brush.find(m_selected_shape);
+    assert(it != m_saved_pen_brush.end());
+    m_shape->setPen(it->second.pen);
+    m_shape->setBrush(it->second.brush);
+    QPointF delta = QPointF(clone_x_offset, clone_y_offset);
+    m_shape->moveRelative(delta);
+    m_shapes.push_front(std::move(m_shape));
+    update();
+}
+
 Shape* DrawingCanvas::isShapeSelected() const {
     return m_selected_shape;
 }
@@ -186,20 +206,23 @@ void DrawingCanvas::paintEvent(QPaintEvent *) {
     painter.setRenderHint(QPainter::Antialiasing);
     paintGrid(painter, 16); // Draw grid with 16px spacing
 
+    // draw what we have so far
     for (const auto &shape : m_shapes)
-        shape->draw(painter);
+        if (shape.get() == m_selected_shape)
+            // draw the selected Shape with
+            // hooks on Top Right Bottom and Left center position
+            shape->drawSelect(painter);
+        else
+            shape->draw(painter);
 
     // Drawing mode
     if (m_isDrawing && m_shape) {
-        /* 
-            draw a preview,
-            prepare the shape coordinates and colors for drawing
-        */
+        // draw a preview, prepare the shape coordinates and colors for drawing     
         ShapeData_t previewData;
+        previewData.type = getShapeType(m_mode);
         previewData.start = m_start_pos;
         previewData.end = m_current_pos;
         previewData.radius = std::hypot(m_current_pos.x() - m_start_pos.x(), m_current_pos.y() - m_start_pos.y());
-        previewData.type = getShapeType(m_mode);
         previewData.points = m_shape->getPoints();
         m_shape->draw(painter, previewData);
     }
@@ -213,25 +236,35 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
             m_current_pos = event->position();
         }
         else if (m_mode == ToolMode::Select) {
-            // Select and drag mode
-            //---------------------
+            // Select mode
+            //------------
             if (m_selected_shape) {
-                if (!m_selected_shape->contains(event->position())) {
+                m_handle = m_selected_shape->hookTest(event->position());
+                if (m_handle != HandlePosition::None && m_handle != HandlePosition::Inside) {
+                    // hooks click, will resize shape horizontally or vertically
+                    qDebug() << "hook test passed shape " << m_handle;
+                    m_start_zoom_pos = event->position();
+                }
+                else if (!m_selected_shape->contains(event->position())) {
                     // mouse click outside the selected shape, restore shape
                     restoreShape();
                     update();
                 }
+                else
+                    m_start_pos = m_current_pos = event->position();
             }
             else {
+                // select mode
                 // iterate in reverse order into shapes
                 for (auto it = m_shapes.crbegin(); it != m_shapes.crend(); ++it) {
                     Shape* shape = it->get();
                     if (shape->contains(event->position())) {
                         QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
                         /* 
-                        retrieve the pen and the brush of 
-                        selected shape, this info will be used when the
-                        shape will find his new position or after zoom-in zoom-out
+                        - Identify a shape under the cursor, save it;
+                        - Retrieve the pen and the brush of selecetd shape
+                          this info will be used when the
+                          shape will find his new position or after zoom-in zoom-out
                         */
                         assert(m_saved_pen_brush.size() == 0);
                         m_selected_shape = shape;
@@ -242,10 +275,10 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
 
                         // set the pen and brush for the highlighted object
                         QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
-                        shape->setPen(pencil);
-                        shape->setBrush(m_select_brush);
+                        m_selected_shape->setPen(pencil);
+                        m_selected_shape->setBrush(m_select_brush);
                         m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
-                            std::move(QString("Use the wheel to zoom-in zoom-out, right click to finalize")));
+                            std::move(QString("Use the wheel to zoom-in zoom-out, click right for more actions")));
                         break;
                     }
                 }
@@ -254,6 +287,7 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
         else {
             // drawing mode
             //-------------
+            m_handle = None;
             m_start_pos =  m_current_pos = event->position();
             m_isDrawing = true;
             QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
@@ -271,6 +305,10 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
                 m_shape = std::make_unique<RectangleShape>(rect, pencil, brush);
             }
             else if (m_mode == ToolMode::Polygon) {
+                /* 
+                    In case of polygon create the Shape object,
+                    than add polygon points to it
+                */
                 if (m_shape == nullptr) {
                     QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
                     m_shape = std::make_unique<PolygonShape>(pencil, brush);
@@ -286,8 +324,8 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
             else
                 qDebug() << "Mouse press event, unknown drawing mode..";
         }
-        event->accept();
         update();
+        event->accept();
     }
 }
 
@@ -309,16 +347,28 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
         };
         m_shape->setShapeData(shape_data);
         update(); // Re-trigger paintEvent for preview
+        event->accept();
 
      } else if (m_selected_shape != nullptr) {
-        // Dragging the selected shape
-        // Show tool hint for Zoom-in Zoom-out
-        m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
-            std::move(QString("Use the wheel to zoom-in zoom-out, right click when done")));
-        QPointF delta = event->position() - m_current_pos;
-        m_selected_shape->moveRelative(delta);
-        m_current_pos = event->position();
+        // Check for shape hooks click
+        if (hookSelected(m_handle)) {
+            // one of the four hooks clicked
+            QPointF delta = (event->position() - m_start_zoom_pos);
+            // ask for Shape coordinates re-computation
+            m_selected_shape->resizeShape(delta, m_handle);
+            m_start_zoom_pos = event->position();
+        }
+        else {
+            // Drag the selected shape
+            // Show tool hint for Zoom-in Zoom-out
+            m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
+                std::move(QString("Use the wheel to zoom-in zoom-out, click outside when done")));
+            QPointF delta = event->position() - m_current_pos;
+            m_selected_shape->moveRelative(delta);
+            m_current_pos = event->position();
+        }
         update();
+        event->accept();
     }
     else if (m_group_shapes.size() > 0) {
         // grouping case
@@ -328,8 +378,8 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
         }
         m_current_pos = event->position();
         update();
+        event->accept();
     }
-    event->accept();
 }
 
 void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
@@ -337,7 +387,7 @@ void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
         //  one single shape is selected
         if (m_selected_shape != nullptr) {
             m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
-                std::move(QString("Use the wheel to zoom-in zoom-out, right click when done")));
+                std::move(QString("Use the wheel to zoom-in zoom-out, click outside when done")));
         }
         else if (m_isDrawing) {
             // Drawing case
@@ -367,9 +417,9 @@ void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
             m_group_shapes.clear();
             m_saved_pen_brush.clear();
             QGuiApplication::restoreOverrideCursor();
-            m_mode = ToolMode::None;
         }
         update();
+        event->accept();
     }
 }
 
@@ -389,7 +439,7 @@ void DrawingCanvas::wheelEvent(QWheelEvent *event) {
         // qDebug() << "zoom factor " << zoom_factor;
         // Display the tooltip near the cursor
         m_selected_shape->toolHint(event->globalPosition().toPoint(),
-            std::move(QString("Use the mouse wheel to zoom, right click when done")));
+            std::move(QString("Use the mouse wheel to zoom, click outside when done")));
         // trigger a redraw
         update();
         event->accept();
@@ -465,5 +515,12 @@ bool DrawingCanvas::loadFromFile(const QString &filePath) {
     }
     update(); // Refresh widget canvas
     return true;
+}
+
+bool DrawingCanvas::hookSelected(const HandlePosition handle) const {
+    return (handle == HandlePosition::TopCenter ||
+            handle == HandlePosition::RightCenter ||
+            handle == HandlePosition::BottomCenter ||
+            handle == HandlePosition::LeftCenter);
 }
 

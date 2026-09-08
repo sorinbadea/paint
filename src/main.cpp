@@ -29,17 +29,23 @@ private:
         */
         QMenu contextMenu(tr("Context Menu"), this);
         if (m_canvas->isShapeSelected()) {
+
+            QAction *copy_action = contextMenu.addAction("Clone");
+            connect(copy_action, &QAction::triggered, this, [this]() {m_canvas->cloneShape();});
+
             QAction *action_zoom_in = contextMenu.addAction("Zoom In");
             connect(action_zoom_in, &QAction::triggered, this, [this]() {m_canvas->setZoomFactor(1.1);});
 
             QAction *action_zoom_out = contextMenu.addAction("Zoom Out");
             connect(action_zoom_out, &QAction::triggered, this, [this]() {m_canvas->setZoomFactor(0.9);});
 
-            QAction *action_remove = contextMenu.addAction("Remove it");
+            QAction *action_remove = contextMenu.addAction("Delete");
             connect(action_remove, &QAction::triggered, this, [this]() {m_canvas->removeShape();});
         }
-        QAction *action_keep = contextMenu.addAction("Keep it");
-        connect(action_keep, &QAction::triggered, this, [this]() {m_canvas->restoreShape();});
+        else {
+            QAction *action_keep = contextMenu.addAction("Done");
+            connect(action_keep, &QAction::triggered, this, [this]() {m_canvas->restoreShape();});
+        }
         contextMenu.exec(this->mapToGlobal(pos));
     }
 
@@ -209,11 +215,27 @@ private:
         // Add the undo menu
         addPenMenuToEdit(editMenu);
 
-        // Clear option
-        //-------------
+        // Clear all option
+        //-----------------
         QAction *clearAction = new QAction("&Clear All", this);
         connect(clearAction, &QAction::triggered, m_canvas.get(), &DrawingCanvas::clearAll);
         editMenu->addAction(clearAction);
+
+        // Zoom In option
+        //----------------
+        QAction *zoomInAction = new QAction("&Zoom In", this);
+        connect(zoomInAction, &QAction::triggered, this, [this]() {
+            m_canvas->zommInOut(1.2);
+        });
+        editMenu->addAction(zoomInAction);
+
+        // Zoom Out option
+        //----------------
+        QAction *zoomOutAction = new QAction("&Zoom Out", this);
+        connect(zoomOutAction, &QAction::triggered, this, [this]() {
+            m_canvas->zommInOut(0.8);
+        });
+        editMenu->addAction(zoomOutAction);
 
         // Help Menu
         QMenu *helpMenu = menuBar()->addMenu("&Help");

@@ -10,6 +10,8 @@
 #include <cmath>
 
 constexpr int pen_width = 2;
+constexpr qreal clone_x_offset = 10.0;
+constexpr qreal clone_y_offset = 10.0;
 
 // -------------------------------------------------------------
 // 3. CANVAS WIDGET
@@ -42,9 +44,11 @@ public:
     void setZoomFactor(const qreal& zoom_factor);
     // getter
     Shape* isShapeSelected() const;
-    // miscelaneous
-    void restoreShape();
-    void removeShape();
+    // context menu actions
+    void cloneShape();   // Copy/Paste
+    void restoreShape(); // Restore shape properties
+    void removeShape();  // Remove shape 
+    void zommInOut(const qreal& factor);
     
 protected:
     // methods called by QT
@@ -62,6 +66,9 @@ private:
     // - handle the case of finalizing the grouping rectangle;
     void finalizeShape();
 
+    // returns true if one of the 4 surounding hooks is clicked
+    inline bool hookSelected(HandlePosition h) const;
+
     // Attributes
     // drawing mode, Circle, Line, Selection..
     ToolMode m_mode;
@@ -73,6 +80,8 @@ private:
     // position
     QPointF m_start_pos;
     QPointF m_current_pos;
+    QPointF m_start_zoom_pos;
+    HandlePosition m_handle;
 
     /*
         The shapes beeing grouped
