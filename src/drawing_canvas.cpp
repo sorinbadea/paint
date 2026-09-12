@@ -236,6 +236,8 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
             m_current_pos = event->position();
         }
         else if (m_mode == ToolMode::Select) {
+            if (m_shapes.size() == 0)
+                return;
             // Select mode
             //------------
             if (m_selected_shape) {
@@ -316,6 +318,8 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
                 m_shape->addPoint(event->position());
             }
             else if (m_mode == ToolMode::Group) {
+                if (m_shapes.size() == 0)
+                    return;
                 QRectF rect(m_start_pos, m_current_pos);
                 QPen pencil(QPen(Qt::darkGray, 2, Qt::DashLine));
                 m_shape = std::make_unique<RectangleShape>(rect, pencil, m_grouping_brush);
