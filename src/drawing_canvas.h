@@ -8,6 +8,7 @@
 #include <vector>
 #include <memory>
 #include <cmath>
+#include <algorithm>
 
 constexpr int pen_width = 2;
 constexpr qreal clone_x_offset = 10.0;
@@ -69,6 +70,9 @@ private:
     // returns true if one of the 4 surounding hooks is clicked
     inline bool hookSelected(HandlePosition h) const;
 
+    // check if a Shape is below the cursor
+    void checkSelected(const QPointF& point);
+
     // Attributes
     // drawing mode, Circle, Line, Selection..
     ToolMode m_mode;
@@ -109,16 +113,6 @@ private:
     QColor m_brush_color;
     QBrush m_select_brush;
     QBrush m_grouping_brush;
-
-    /*
-        store the pen and brush either for the selected shape
-        or for a group of selected shapes
-    */
-    struct PenBrush {
-        QPen pen;
-        QBrush brush;
-    };
-    std::map<Shape*, struct PenBrush> m_saved_pen_brush;
 
     // zoom factor
     qreal m_zoom_factor;

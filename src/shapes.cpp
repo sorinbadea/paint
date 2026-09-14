@@ -4,6 +4,11 @@
 #include "shapes.h"
 #include <QToolTip>
 
+// Define the pen and the brush for the selected shapes
+Shape::Shape() : m_shape_select_brush(QBrush(Qt::darkGray, Qt::DiagCrossPattern)),
+              m_shape_select_pencil(QPen(Qt::darkYellow, 1.5, Qt::DashLine)) {
+}
+
 // ========================== LINE SHAPE ==========================
 LineShape::LineShape(const QLineF &line, const QPen &pen, const QBrush& brush)
     : m_line(line), m_pen(pen), m_brush(brush) {}
@@ -15,12 +20,13 @@ void LineShape::draw(QPainter &painter) const {
 
 void LineShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
     QLineF line(*shape_data.start, *shape_data.end);
-    painter.setPen(m_pen);
+    painter.setPen(shape_data.pencil);
+    painter.setBrush(shape_data.brush);
     painter.drawLine(line);
 }
 
 void LineShape::drawSelect(QPainter &painter) const {
-    painter.setPen(m_pen);
+    painter.setPen(m_shape_select_pencil);
     painter.drawLine(m_line);
 }
 
@@ -49,22 +55,6 @@ bool LineShape::contains(const QPointF &point) const{
     qreal splitLength = p1_to_p.length() + p_to_p2.length();
     // Check if total length matches split length within tolerance
     return std::abs(totalLength - splitLength) < EPSILON; // 1.0 is the epsilon for tolerance
-}
-
-const QPen& LineShape::getPen() const {
-    return m_pen;
-}
-
-const QBrush& LineShape::getBrush() const {
-    return m_brush;
-}
-
-void LineShape::setPen(const QPen &pen) {
-    m_pen = pen;
-}
-
-void LineShape::setBrush(const QBrush &brush) {
-    m_brush = brush;
 }
 
 void LineShape::addPoint(const QPointF& p) {
@@ -122,8 +112,8 @@ void RectangleShape::draw(QPainter &painter) const {
 void RectangleShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
     QRectF rect(*shape_data.start, *shape_data.end);
     rect = rect.normalized();
-    painter.setPen(m_pen);
-    painter.setBrush(m_brush);
+    painter.setPen(shape_data.pencil);
+    painter.setBrush(shape_data.brush);
     painter.drawRect(rect);
 }
 
@@ -135,8 +125,8 @@ QRectF RectangleShape::getHandleRect(const QPointF& center) const {
 }
 
 void RectangleShape::drawSelect(QPainter &painter) const {
-    painter.setPen(m_pen);
-    painter.setBrush(m_brush);
+    painter.setPen(m_shape_select_pencil);
+    painter.setBrush(m_shape_select_brush);
     painter.drawRect(m_rectangle);
     const QPointF topCenter(m_rectangle.center().x(), m_rectangle.top());
     const QPointF bottomCenter(m_rectangle.center().x(), m_rectangle.bottom());
@@ -148,6 +138,10 @@ void RectangleShape::drawSelect(QPainter &painter) const {
         leftCenter,
         rightCenter
     };
+    QPen pencil(QPen(Qt::blue, 1, Qt::SolidLine));
+    painter.setPen(pencil);
+    QBrush mybrush(Qt::white, Qt::SolidPattern);
+    painter.setBrush(mybrush);
     // draw hooking points around the shape
     for (const QPointF& handle : handleCenters) {
         painter.drawRect(getHandleRect(handle));
@@ -172,22 +166,6 @@ void RectangleShape::deserialize(QDataStream &in) {
 
 bool RectangleShape::contains(const QPointF &point) const{
     return m_rectangle.contains(point);
-}
-
-const QPen& RectangleShape::getPen() const {
-    return m_pen;
-}
-
-const QBrush& RectangleShape::getBrush() const {
-    return m_brush;
-}
-
-void RectangleShape::setPen(const QPen &pen) {
-    m_pen = pen;
-}
-
-void RectangleShape::setBrush(const QBrush &brush) {
-    m_brush = brush;
 }
 
 void RectangleShape::addPoint(const QPointF& p) {
@@ -297,8 +275,8 @@ void CircleShape::draw(QPainter &painter) const {
 
 void CircleShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
     if (shape_data.radius > 0) {
-        painter.setPen(m_pen);
-        painter.setBrush(m_brush);
+        painter.setPen(shape_data.pencil);
+        painter.setBrush(shape_data.brush);
         painter.drawEllipse(*shape_data.start, *shape_data.radius, *shape_data.radius);
     }
 }
@@ -308,10 +286,9 @@ void CircleShape::drawSelect(QPainter &painter) const {
         return;
 
     painter.setRenderHint(QPainter::Antialiasing);
-
     // 1. Draw the circle outline / fill
-    painter.setPen(m_pen);
-    painter.setBrush(m_brush);
+    painter.setPen(m_shape_select_pencil);
+    painter.setBrush(m_shape_select_brush);
     painter.drawEllipse(m_center, m_radius_x, m_radius_y);
 
     // 2. Compute the 4 handle midpoints on the circle perimeter
@@ -328,8 +305,10 @@ void CircleShape::drawSelect(QPainter &painter) const {
     };
 
     // 3. Draw small handle rectangles centered on each point
-    painter.setPen(QPen(Qt::darkBlue, 1));
-    painter.setBrush(Qt::white);
+    QPen pencil(QPen(Qt::blue, 1, Qt::SolidLine));
+    painter.setPen(pencil);
+    QBrush mybrush(Qt::white, Qt::SolidPattern);
+    painter.setBrush(mybrush);
 
     for (const QPointF& center : handleMidpoints) {
         QRectF handleRect(
@@ -369,22 +348,6 @@ bool CircleShape::contains(const QPointF &point) const{
     QPainterPath path;
     path.addEllipse(boundingRect);
     return path.contains(point);
-}
-
-const QPen& CircleShape::getPen() const {
-    return m_pen;
-}
-
-const QBrush& CircleShape::getBrush() const {
-    return m_brush;
-}
-
-void CircleShape::setPen(const QPen &pen) {
-    m_pen = pen;
-}
-
-void CircleShape::setBrush(const QBrush &brush) {
-    m_brush = brush;
 }
 
 QPolygonF CircleShape::getPoints() {
@@ -515,8 +478,8 @@ std::unique_ptr<Shape> PolygonShape::clone() const {
 }
 
 void PolygonShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
-    painter.setPen(m_pen);
-    painter.setBrush(m_brush);
+    painter.setPen(shape_data.pencil);
+    painter.setBrush(shape_data.brush);
     // 1. Draw existing segments using drawPolyline
     painter.drawPolyline(m_points);
     painter.drawLine((*shape_data.points).last(), *shape_data.end);
@@ -529,9 +492,6 @@ void PolygonShape::draw(QPainter &painter, const ShapeData_t& shape_data) const 
 }
 
 void PolygonShape::drawSelect(QPainter &painter) const {
-    painter.setPen(m_pen);
-    painter.setBrush(m_brush);
-
     QRectF frameRect = m_points.boundingRect();
     const QPointF topCenter(frameRect.center().x(), frameRect.top());
     const QPointF rightCenter(frameRect.right(), frameRect.center().y());
@@ -544,7 +504,11 @@ void PolygonShape::drawSelect(QPainter &painter) const {
         bottomCenter,
         leftCenter
     };
-    
+    QPen pencil(QPen(Qt::blue, 1, Qt::SolidLine));
+    painter.setPen(pencil);
+    QBrush mybrush(Qt::white, Qt::SolidPattern);
+    painter.setBrush(mybrush);
+
     for (const QPointF& center : handleMidpoints) {
         QRectF handleRect(
             center.x() - handle_size / 2.0,
@@ -554,6 +518,8 @@ void PolygonShape::drawSelect(QPainter &painter) const {
         );
         painter.drawRect(handleRect);
     }
+    painter.setPen(m_shape_select_pencil);
+    painter.setBrush(m_shape_select_brush);
     painter.drawPolygon(m_points);
 }
 
@@ -573,22 +539,6 @@ bool PolygonShape::contains(const QPointF &point) const{
     QRectF frameRect = m_points.boundingRect();
     return frameRect.contains(point) 
         || m_points.containsPoint(point, Qt::OddEvenFill);
-}
-
-const QPen& PolygonShape::getPen() const {
-    return m_pen;
-}
-
-const QBrush& PolygonShape::getBrush() const {
-    return m_brush;
-}
-
-void PolygonShape::setPen(const QPen &pen) {
-    m_pen = pen;
-}
-
-void PolygonShape::setBrush(const QBrush &brush) {
-    m_brush = brush;
 }
 
 void PolygonShape::addPoint(const QPointF& qpoint) {

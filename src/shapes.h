@@ -1,6 +1,7 @@
 #ifndef SHAPES_H
 #define SHAPES_H
 
+#include <iostream>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPen>
@@ -34,13 +35,22 @@ typedef struct {
     std::optional<QPointF> end;
     std::optional<qreal> radius;
     std::optional<QPolygonF> points;
+    QBrush brush;
+    QPen pencil;
 } ShapeData_t;
 
 // -------------------------------------------------------------
 // 1. ABSTRACT BASE SHAPE CLASS
 // -------------------------------------------------------------
 class Shape {
+
+protected:
+    QPen m_pen;
+    QBrush m_shape_select_brush;
+    QPen m_shape_select_pencil;
+
 public:
+    Shape();
     virtual ~Shape() = default;
 
     // for Shape cloning
@@ -57,14 +67,10 @@ public:
     // a different value than None means a hook was clicked
     virtual HandlePosition hookTest(const QPointF& pt) const = 0;
 
-    // getter setters
+    // getters
     virtual ShapeType type() const = 0;
-    virtual const QPen& getPen() const = 0;
-    virtual const QBrush& getBrush() const = 0;
     virtual QPolygonF getPoints() = 0;
 
-    virtual void setPen(const QPen &pen) = 0;
-    virtual void setBrush(const QBrush &brush) = 0;
     virtual void setShapeData(const ShapeData_t& shape_data) = 0;
     virtual void addPoint(const QPointF& p) = 0;
 
@@ -100,10 +106,6 @@ public:
     bool contains(const QPointF &point) const override;
     HandlePosition hookTest(const QPointF& pt) const override;
     // getter setters
-    const QPen& getPen() const override;
-    const QBrush& getBrush() const override;
-    void setPen(const QPen &pen) override;
-    void setBrush(const QBrush &brush) override;
     void setShapeData(const ShapeData_t& shape_data) override;
     QPolygonF getPoints() override;
     void addPoint(const QPointF& p) override;
@@ -133,13 +135,9 @@ public:
     ShapeType type() const override;
     HandlePosition hookTest(const QPointF& pt) const override;
     bool contains(const QPointF &point) const override;
-    void setPen(const QPen &pen) override;
-    void setBrush(const QBrush &brush) override;
     void setShapeData(const ShapeData_t& shape_data) override;
     QPolygonF getPoints() override;
     void addPoint(const QPointF& p) override;
-    const QPen& getPen() const override;
-    const QBrush& getBrush() const override;
     void resizeShape(const QPointF &delta, const HandlePosition hp) override;
     void moveRelative(const QPointF &delta) override;
     void zoomInOut(const qreal& factor) override;
@@ -168,10 +166,6 @@ public:
     ShapeType type() const override;
     HandlePosition hookTest(const QPointF& pt) const override;
     bool contains(const QPointF &point) const override;
-    const QPen& getPen() const override;
-    const QBrush& getBrush() const override;
-    void setPen(const QPen &pen) override;
-    void setBrush(const QBrush &brush) override;
     void setShapeData(const ShapeData_t& shape_data) override;
     void addPoint(const QPointF& p) override;
     QPolygonF getPoints() override;
@@ -202,10 +196,6 @@ public:
     ShapeType type() const override;
     HandlePosition hookTest(const QPointF& pt) const override;
     bool contains(const QPointF &point) const override;
-    const QPen& getPen() const override;
-    const QBrush& getBrush() const override;
-    void setPen(const QPen &pen) override;
-    void setBrush(const QBrush &brush) override;
     void setShapeData(const ShapeData_t& shape_data) override;
     void addPoint(const QPointF& p) override;
     QPolygonF getPoints() override;
