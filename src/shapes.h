@@ -12,7 +12,7 @@ constexpr qreal handle_size = 8.0;
 constexpr qreal hit_padding = 4.0;
 constexpr qreal min_radius = 4.0;
 
-enum class ShapeType : quint32 {
+enum class ShapeType : uint8_t {
     Line = 1,
     Circle = 2,
     Rectangle = 3,
@@ -20,7 +20,7 @@ enum class ShapeType : quint32 {
     None
 };
 
-enum HandlePosition {
+enum HandlePosition : uint8_t {
     None,
     TopCenter,
     BottomCenter,
@@ -45,11 +45,15 @@ typedef struct {
 class Shape {
 
 protected:
+    //pen brushes..
     QBrush m_shape_select_brush;
     QPen m_shape_select_pencil;
+    QPen m_pen;
+    QBrush m_brush;
 
 public:
-    Shape();
+    Shape() = default;
+    Shape(QPen pen, QBrush brush);
     virtual ~Shape() = default;
 
     // for Shape cloning
@@ -118,9 +122,6 @@ public:
 private:
     //coordinates
     QLineF m_line;
-    //pen brushes..
-    QPen m_pen;
-    QBrush m_brush;
 };
 
 class CircleShape : public Shape {
@@ -145,9 +146,6 @@ public:
     void deserialize(QDataStream &in) override;
 
 private:
-    //pen brushes..
-    QPen m_pen;
-    QBrush m_brush;
     //coordinates and radius
     QPointF m_center;
     qreal m_radius_x;
@@ -179,9 +177,6 @@ private:
     QRectF getHandleRect(const QPointF& center) const;
     //coordinates
     QRectF m_rectangle;
-    //pen brushes..
-    QPen m_pen;
-    QBrush m_brush;
 };
 
 class PolygonShape : public Shape {
@@ -208,9 +203,6 @@ public:
 private:
     //coordinates
     QPolygonF m_points;
-    //pen brushes..
-    QPen m_pen;
-    QBrush m_brush;
 };
 
 #endif

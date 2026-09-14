@@ -5,13 +5,13 @@
 #include <QToolTip>
 
 // Define the pen and the brush for the selected shapes
-Shape::Shape() : m_shape_select_brush(QBrush(Qt::darkGray, Qt::DiagCrossPattern)),
+Shape::Shape(QPen pen, QBrush brush) : m_pen(pen), m_brush(brush), m_shape_select_brush(QBrush(Qt::darkGray, Qt::DiagCrossPattern)),
               m_shape_select_pencil(QPen(Qt::darkYellow, 1.5, Qt::DashLine)) {
 }
 
 // ========================== LINE SHAPE ==========================
 LineShape::LineShape(const QLineF &line, const QPen &pen, const QBrush& brush)
-    : m_line(line), m_pen(pen), m_brush(brush) {}
+    : Shape(pen, brush), m_line(line) {}
 
 void LineShape::draw(QPainter &painter) const {
     painter.setPen(m_pen);
@@ -99,7 +99,7 @@ HandlePosition LineShape::hookTest(const QPointF& pt) const {
 
 // ========================== RECTANGLE SHAPE ==========================
 RectangleShape::RectangleShape(const QRectF &rectangle, const QPen &pen, const QBrush& brush)
-    : m_rectangle(rectangle), m_pen(pen), m_brush(brush) {
+    : Shape(pen, brush), m_rectangle(rectangle) {
         m_rectangle = m_rectangle.normalized();
     }
 
@@ -259,11 +259,10 @@ HandlePosition RectangleShape::hookTest(const QPointF& pt) const {
 // ========================== CIRCLE SHAPE ==========================
 CircleShape::CircleShape(
     const QPointF &center, qreal radius, const QPen &pen, const QBrush &brush)
-        : m_center(center),
+        : Shape(pen, brush), m_center(center),
         m_radius_x(radius),
-        m_radius_y(radius),
-        m_pen(pen),
-        m_brush(brush) {}
+        m_radius_y(radius) {
+    }
 
 void CircleShape::draw(QPainter &painter) const {
     if (m_radius_x >0 && m_radius_y >0) {
@@ -461,7 +460,7 @@ HandlePosition CircleShape::hookTest(const QPointF& pt) const {
 
 // ========================== POLYGON SHAPE ==========================
 PolygonShape::PolygonShape(const QPen &pen, const QBrush& brush)
-    : m_pen(pen), m_brush(brush) {
+    : Shape(pen, brush) {
 }
 
 void PolygonShape::draw(QPainter &painter) const {

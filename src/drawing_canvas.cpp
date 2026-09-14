@@ -73,7 +73,6 @@ void DrawingCanvas::zommInOut(const qreal& zoom_factor) {
     }
     update();
 }
-
 // ---- end of user requestd actions -----
 
 void DrawingCanvas::paintGrid(QPainter& painter, unsigned grid_width)
@@ -114,15 +113,10 @@ void DrawingCanvas::finalizeShape() {
         for(const auto& shape : m_shapes) {
             QPolygonF polygon = shape->getPoints();
             if (polygon.intersects(rectangle)) {
-                QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
-                /* 
-                    set the grouping highlight, new brush and pencil
-                    save pencil and brush of the selected shapes
-                */
+                // add a shape to the group
                 m_group_shapes.push_back(shape.get());
             }
         }
-        // qDebug() << "grouping feature, start pos " << m_start_pos << " end position " << m_current_pos << " grouping " << m_group_shapes.size();
         m_grouping = false;
     }
     else {
