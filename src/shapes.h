@@ -45,7 +45,6 @@ typedef struct {
 class Shape {
 
 protected:
-    QPen m_pen;
     QBrush m_shape_select_brush;
     QPen m_shape_select_pencil;
 
