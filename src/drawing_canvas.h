@@ -1,6 +1,7 @@
 #ifndef DRAWINGCANVAS_H
 #define DRAWINGCANVAS_H
 #include "shapes.h"
+#include <QToolTip>
 #include <QWidget>
 #include <QMouseEvent>
 #include <QPointF>
@@ -13,6 +14,8 @@
 constexpr int pen_width = 2;
 constexpr qreal clone_x_offset = 10.0;
 constexpr qreal clone_y_offset = 10.0;
+constexpr bool wo_hooks = false;
+constexpr bool w_hooks = true;
 
 // -------------------------------------------------------------
 // 3. CANVAS WIDGET
@@ -45,6 +48,7 @@ public:
     void setZoomFactor(const qreal& zoom_factor);
     // getter
     Shape* isShapeSelected() const;
+    ToolMode getToolMode() const;
     // context menu actions
     void cloneShape();   // Copy/Paste
     void restoreShape(); // Restore shape properties
@@ -65,13 +69,13 @@ private:
 
     // - add the new shape on the Shape's list, restore brush and pen;
     // - handle the case of finalizing the grouping rectangle;
-    void finalizeShape();
+    void finalizeShape(std::optional<QPointF> const&  point);
 
     // returns true if one of the 4 surounding hooks is clicked
     inline bool hookSelected(HandlePosition h) const;
 
     // check if a Shape is below the cursor
-    void checkSelected(const QPointF& point);
+    Shape* getSelectedShape(const QPointF& point);
 
     // Attributes
     // drawing mode, Circle, Line, Selection..

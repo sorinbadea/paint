@@ -29,7 +29,7 @@ private:
         */
         QMenu contextMenu(tr("Context Menu"), this);
         if (m_canvas->isShapeSelected()) {
-
+            // the sape is selected
             QAction *copy_action = contextMenu.addAction("Clone");
             connect(copy_action, &QAction::triggered, this, [this]() {m_canvas->cloneShape();});
 
@@ -42,7 +42,8 @@ private:
             QAction *action_remove = contextMenu.addAction("Delete");
             connect(action_remove, &QAction::triggered, this, [this]() {m_canvas->removeShape();});
         }
-        else {
+        // last step of Polygon drawing
+        else if (m_canvas->getToolMode() == ToolMode::Polygon){
             QAction *action_keep = contextMenu.addAction("Done");
             connect(action_keep, &QAction::triggered, this, [this]() {m_canvas->restoreShape();});
         }

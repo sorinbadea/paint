@@ -1,4 +1,3 @@
-#include <QToolTip>
 #include "shapes.h"
 #include "drawing_canvas.h"
 
@@ -94,14 +93,13 @@ void DrawingCanvas::paintGrid(QPainter& painter, unsigned grid_width)
     }
 }
 
-void DrawingCanvas::finalizeShape() {
+void DrawingCanvas::finalizeShape(std::optional<QPointF> const&  point) {
     /*
        - reset the drawing flag, set the pencil and brush for the new shape;
        - add the shape to existing shapes
        - handle the grouping case
     */
-    if (!m_shape)
-        return;
+    assert(m_shape);
     // reset drawing flag
     m_isDrawing = false;
 
@@ -117,7 +115,9 @@ void DrawingCanvas::finalizeShape() {
                 m_group_shapes.push_back(shape.get());
             }
         }
-        m_grouping = false;
+        if (point.has_value())
+            m_shape->toolHint(mapToGlobal(point.value().toPoint()),
+                std::move(QString("Use the mouse wheel for zoom in zoom out")));
     }
     else {
         // store the new shape
@@ -143,7 +143,7 @@ void DrawingCanvas::restoreShape() {
           drawing a Polygon, Right click, than click on "Done";
           The Polygon shape is new, never selected so far
         */
-        finalizeShape();
+        finalizeShape(std::nullopt);
         update();
     }
 }
@@ -177,6 +177,10 @@ Shape* DrawingCanvas::isShapeSelected() const {
     return m_selected_shape;
 }
 
+ToolMode DrawingCanvas::getToolMode() const {
+    return m_mode;
+}
+
 void DrawingCanvas::paintEvent(QPaintEvent *) {
     // allways create the QPainter object inside the paintEvent() method
     QPainter painter(this);
@@ -187,17 +191,19 @@ void DrawingCanvas::paintEvent(QPaintEvent *) {
     for (const auto &shape : m_shapes) {
         if (shape.get() == m_selected_shape)
             // draw the selected Shape with hooks on the center
-            shape->drawSelect(painter);
+            shape->drawSelect(painter, w_hooks);
         else {
             auto it = std::find(m_group_shapes.begin(), m_group_shapes.end(), shape.get()); 
-            // the shape is grouped, draw it specially
+            // the shape is grouped, draw it specially but wo hooks
             if (it != m_group_shapes.end())
-                shape->drawSelect(painter);
+                shape->drawSelect(painter, wo_hooks);
             else
                 // normal draw
                 shape->draw(painter);
         }
     }
+    if(m_shape && m_grouping)
+        m_shape->draw(painter);
 
     // Drawing mode
     if (m_isDrawing && m_shape) {
@@ -219,7 +225,8 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
         if (m_group_shapes.size() > 0) {
             // grouping shapes case
-            QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
+            if (!QGuiApplication::overrideCursor())
+                QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
             m_current_pos = event->position();
         }
         else if (m_mode == ToolMode::Select) {
@@ -231,22 +238,26 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
                 // A shape was identified and selected
                 m_handle = m_selected_shape->hookTest(event->position());
                 if (m_handle != HandlePosition::None && m_handle != HandlePosition::Inside) {
-                    // hooks click, will resize shape horizontally or vertically
-                    // qDebug() << "hook test passed shape " << m_handle;
+                    // hook click, will resize shape horizontally or vertically
                     m_start_zoom_pos = event->position();
                 }
                 else if (!m_selected_shape->contains(event->position())) {
                     // mouse click outside the selected shape, restore shape
                     restoreShape();
-                    update();
-                    event->accept();
                 }
                 else
                     m_start_pos = m_current_pos = event->position();
             }
-            else
-                // select mode, check for a Shape under the cursor
-                checkSelected(event->position());
+            else {
+                m_selected_shape = getSelectedShape(event->position());
+                if (m_selected_shape) {
+                    // A Shape was found under the cursor
+                    QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
+                    m_current_pos = event->position();
+                    m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
+                        std::move(QString("Use the wheel to zoom-in zoom-out, click right for more actions")));
+                }
+            }
         }
         else {
             // drawing mode
@@ -307,8 +318,9 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
                 std::move(QString("Mouse right click to finish the polygon")));
 
         m_current_pos = event->position();
+        QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
         ShapeData_t shape_data = {
-            m_shape->type(), m_start_pos, m_current_pos, std::nullopt, m_shape->getPoints()
+            m_shape->type(), m_start_pos, m_current_pos, std::nullopt, m_shape->getPoints(), m_select_brush, pencil
         };
         m_shape->setShapeData(shape_data);
         update(); // Re-trigger paintEvent for preview
@@ -337,10 +349,12 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
     }
     else if (m_group_shapes.size() > 0) {
         // grouping case
+        QPointF delta = event->position() - m_current_pos;
         for(const auto& shape : m_group_shapes) {
-            QPointF delta = event->position() - m_current_pos;
             shape->moveRelative(delta);
         }
+        assert(m_shape != nullptr);
+        m_shape->moveRelative(delta);
         m_current_pos = event->position();
         update();
         event->accept();
@@ -349,18 +363,18 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
 
 void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
     if (event->button() == Qt::LeftButton) {
-        //  one single shape is selected
+        // one shape is selected
         if (m_selected_shape != nullptr) {
             m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
                 std::move(QString("Use the wheel to zoom-in zoom-out, click outside when done")));
         }
-        else if (m_isDrawing) {
+        else if (m_isDrawing && m_shape) {
             // Drawing case
-            if (m_mode != ToolMode::Polygon) {
-                // Line, Rectangle and Circle
+            if (m_mode != ToolMode::Polygon && m_mode != ToolMode::None) {
+                // Line, Rectangle, Circle and Grouping
                 m_current_pos = event->position();
                 // Store the new shape
-                finalizeShape();
+                finalizeShape(event->position());
             }
             else
                 // Polygon
@@ -368,10 +382,19 @@ void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
                     std::move(QString("Right click to finish the polygon")));
         }
         else if (m_group_shapes.size() > 0) {
-            // clear the list containing the grouped shapes
-            m_shape.reset();
-            m_group_shapes.clear();
-            QGuiApplication::restoreOverrideCursor();
+            if (!m_shape->contains(event->position())) {
+                /*
+                    click outside the grouping rectangle
+                    clear the list containing the grouped shapes and flags
+                */
+                m_shape.reset();
+                m_group_shapes.clear();
+                m_grouping = false;
+                m_mode = ToolMode::Select;
+                QGuiApplication::restoreOverrideCursor();
+            } else
+                m_shape->toolHint(mapToGlobal(event->position().toPoint()),
+                    std::move(QString("Use the wheel to zoom in zoom out")));
         }
         update();
         event->accept();
@@ -379,17 +402,17 @@ void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
 }
 
 void DrawingCanvas::wheelEvent(QWheelEvent *event) {
-     if(m_selected_shape) {
-        // Determine scroll direction (positive = scroll up/zoom in, negative = scroll down/zoom out)
-        int delta = event->angleDelta().y();
-        if (delta == 0) return; // Ignore horizontal scrolling
-        // 2. Define the step ratio (e.g., 10% per wheel notch)
-        qreal stepFactor = (delta > 0) ? 1.10 : (1.0 / 1.10);
-        // 3. Update and clamp the accumulated zoom factor
-        qreal minZoom = 0.1;  // 10% minimum
-        qreal maxZoom = 10.0; // 2000% maximum
-        qreal zoom_factor = 1.0;
-        zoom_factor = qBound(minZoom, zoom_factor * stepFactor, maxZoom);
+    // Determine scroll direction (positive = scroll up/zoom in, negative = scroll down/zoom out)
+    int delta = event->angleDelta().y();
+    if (delta == 0) return; // Ignore horizontal scrolling
+    // Define the step ratio (e.g., 10% per wheel notch)
+    qreal stepFactor = (delta > 0) ? 1.10 : (1.0 / 1.10);
+    // 3. Update and clamp the accumulated zoom factor
+    qreal minZoom = 0.1;  // 10% minimum
+    qreal maxZoom = 10.0; // 2000% maximum
+    qreal zoom_factor = 1.0;
+    zoom_factor = qBound(minZoom, zoom_factor * stepFactor, maxZoom);
+    if(m_selected_shape) {
         m_selected_shape->zoomInOut(zoom_factor);
         // qDebug() << "zoom factor " << zoom_factor;
         // Display the tooltip near the cursor
@@ -399,31 +422,32 @@ void DrawingCanvas::wheelEvent(QWheelEvent *event) {
         update();
         event->accept();
      }
+     // zoom the group of shapes
+     else if (m_group_shapes.size() > 0) {
+        for(const auto& shape : m_group_shapes)
+            shape->zoomInOut(zoom_factor);
+        update();
+        event->accept();
+     }
 }
 
-void DrawingCanvas::checkSelected(const QPointF& point) {
+Shape* DrawingCanvas::getSelectedShape(const QPointF& point) {
     auto lastIt = std::prev(m_shapes.end());
     for (auto it = m_shapes.begin(); it != m_shapes.end(); ++it) {
         Shape* shape = it->get();
         if (shape->contains(point)) {
-            QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
+            m_selected_shape = shape;
             /* 
-            - Identify a shape under the cursor, save it;
-            - Retrieve the pen and the brush of selecetd shape
-                this info will be used when the
-                shape will find his new position or after zoom-in zoom-out
-            - bring in front the selected shape
+            - Identify a shape under the cursor;
+            - bring in front the selected shape;
             */
             if (it != lastIt) {
                 std::swap(*it, *lastIt);
             }
-            m_selected_shape = shape;
-            m_current_pos = point;
-            m_selected_shape->toolHint(mapToGlobal(point.toPoint()),
-                std::move(QString("Use the wheel to zoom-in zoom-out, click right for more actions")));
-            break;
+            return shape;
         }
     }
+    return nullptr;
 }
 
 bool DrawingCanvas::saveToFile(const QString &filePath) const {
