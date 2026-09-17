@@ -249,15 +249,16 @@ HandlePosition RectangleShape::hookTest(const QPointF& pt) const {
     const QPointF rightCenter(m_rectangle.right(), m_rectangle.center().y());
 
     // 1. Check Edge-Center Handles Only
-    if (isNear(pt, topCenter, tolerance))    return HandlePosition::TopCenter;
-    if (isNear(pt, bottomCenter, tolerance)) return HandlePosition::BottomCenter;
-    if (isNear(pt, leftCenter, tolerance))   return HandlePosition::LeftCenter;
-    if (isNear(pt, rightCenter, tolerance))  return HandlePosition::RightCenter;
-
-    // 2. Inside Area & Outside
-    if (m_rectangle.contains(pt)) return HandlePosition::Inside;
-
-    return HandlePosition::None;
+    if (isNear(pt, topCenter, tolerance))
+        return HandlePosition::TopCenter;
+    else if (isNear(pt, bottomCenter, tolerance))
+        return HandlePosition::BottomCenter;
+    else if (isNear(pt, leftCenter, tolerance))
+        return HandlePosition::LeftCenter;
+    else if (isNear(pt, rightCenter, tolerance))
+        return HandlePosition::RightCenter;
+    else
+        return HandlePosition::None;
 }
 
 // ========================== CIRCLE SHAPE ==========================
@@ -458,7 +459,8 @@ HandlePosition CircleShape::hookTest(const QPointF& pt) const {
         return HandlePosition::BottomCenter;
     else if (makeHitRect(leftCenter).contains(pt))
         return HandlePosition::LeftCenter;
-    return HandlePosition::None;
+    else
+        return HandlePosition::None;
 }
 
 // ========================== POLYGON SHAPE ==========================
@@ -663,6 +665,6 @@ HandlePosition PolygonShape::hookTest(const QPointF& pt) const {
         return HandlePosition::BottomCenter;
     else if (makeHitRect(leftCenter).contains(pt))
         return HandlePosition::LeftCenter;
-
-    return HandlePosition::None;
+    else
+        return HandlePosition::None;
 }

@@ -237,7 +237,7 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
             if (m_selected_shape) {
                 // A shape was identified and selected
                 m_handle = m_selected_shape->hookTest(event->position());
-                if (m_handle != HandlePosition::None && m_handle != HandlePosition::Inside) {
+                if (m_handle != HandlePosition::None) {
                     // hook click, will resize shape horizontally or vertically
                     m_start_zoom_pos = event->position();
                 }
@@ -262,7 +262,6 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
         else {
             // drawing mode
             //-------------
-            m_handle = None;
             m_start_pos =  m_current_pos = event->position();
             m_isDrawing = true;
             QPen pencil(QPen(m_drawing_color, m_pen_width, Qt::SolidLine));
@@ -294,6 +293,7 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
                     return;
                 QRectF rect(m_start_pos, m_current_pos);
                 QPen pencil(QPen(Qt::darkGray, 2, Qt::DashLine));
+                // create the m_shape representing the rectangle grouping the shapes
                 m_shape = std::make_unique<RectangleShape>(rect, pencil, m_grouping_brush);
                 m_grouping = true;
             }
@@ -354,6 +354,7 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
             shape->moveRelative(delta);
         }
         assert(m_shape != nullptr);
+        // move the rectangle (m_shape) grouping the shapes
         m_shape->moveRelative(delta);
         m_current_pos = event->position();
         update();
@@ -371,7 +372,7 @@ void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
         else if (m_isDrawing && m_shape) {
             // Drawing case
             if (m_mode != ToolMode::Polygon && m_mode != ToolMode::None) {
-                // Line, Rectangle, Circle and Grouping
+                // Line, Rectangle, Circle and the grouping rectangle
                 m_current_pos = event->position();
                 // Store the new shape
                 finalizeShape(event->position());
@@ -382,6 +383,7 @@ void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
                     std::move(QString("Right click to finish the polygon")));
         }
         else if (m_group_shapes.size() > 0) {
+            assert(m_shape);
             if (!m_shape->contains(event->position())) {
                 /*
                     click outside the grouping rectangle
