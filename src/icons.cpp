@@ -253,3 +253,31 @@ QIcon createGroupIcon(unsigned size, const QColor &color) {
     painter.drawEllipse(circleCenter, circleRadius, circleRadius);
     return pixmap;
 }
+
+QIcon createWidthIcon(int width, const QColor& pen_color) {
+    // 1. Create a transparent pixmap
+    QPixmap pixmap(ICON_SIZE, ICON_SIZE);
+    QSize size = QSize(ICON_SIZE, ICON_SIZE);
+    pixmap.fill(Qt::transparent);
+
+    QPainter painter(&pixmap);
+    
+    // Enable anti-aliasing for smooth, high-quality rendering
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    // 2. Configure pen with the specified width
+    QPen pen(pen_color);
+    pen.setWidth(width);
+    pen.setCapStyle(Qt::RoundCap); // Smooth line ends
+    painter.setPen(pen);
+
+    // 3. Draw horizontal line centered vertically in the icon
+    int startX = 4;
+    int endX = size.width() - 4;
+    int centerY = size.height() / 2;
+
+    painter.drawLine(startX, centerY, endX, centerY);
+    painter.end();
+
+    return QIcon(pixmap);
+}

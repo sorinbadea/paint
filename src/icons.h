@@ -20,6 +20,8 @@ helper file for icons drawing
 #include <QAction>
 #include <QKeySequence>
 #include <QMessageBox>
+#include <QToolButton>
+#include <QInputDialog>
 
 constexpr unsigned ICON_SIZE = 30;
 
@@ -31,5 +33,6 @@ QIcon   createPencilIcon(const QColor &color);
 QIcon   createBrushIcon(const QColor &color);
 QIcon   createPolygonIcon();
 QIcon   createGroupIcon(unsigned size = ICON_SIZE, const QColor &dotColor = QColor(10, 10, 10));
+QIcon   createWidthIcon(int width, const QColor& pen_color);
 
 #endif

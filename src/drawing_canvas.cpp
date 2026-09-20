@@ -181,6 +181,10 @@ ToolMode DrawingCanvas::getToolMode() const {
     return m_mode;
 }
 
+const QColor& DrawingCanvas::getDrawingColor() const {
+    return m_drawing_color;
+}
+
 void DrawingCanvas::paintEvent(QPaintEvent *) {
     // allways create the QPainter object inside the paintEvent() method
     QPainter painter(this);

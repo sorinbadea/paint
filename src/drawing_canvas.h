@@ -46,9 +46,10 @@ public:
     void setPaintColor(const QColor& color);
     void setBrushColor(const QColor& brush);
     void setZoomFactor(const qreal& zoom_factor);
-    // getter
+    // getters
     Shape* isShapeSelected() const;
     ToolMode getToolMode() const;
+    const QColor& getDrawingColor() const;
     // context menu actions
     void cloneShape();   // Copy/Paste
     void restoreShape(); // Restore shape properties

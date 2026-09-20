@@ -6,12 +6,12 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr) : QMainWindow(parent),
-        m_drawing_color(Qt::white) {
+    MainWindow(QWidget *parent = nullptr) : QMainWindow(parent)
+        ,m_width_action(nullptr) {
         m_canvas = std::make_unique<DrawingCanvas>(this);
         setCentralWidget(m_canvas.get());
         setWindowTitle("Paint-brush (Qt6)");
-        resize(900, 600);
+        resize(1000, 600);
         createMenus();
         // right click menu
         this->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -23,6 +23,58 @@ public:
     }
 
 private:
+    QAction* penWidthPickMenu(QToolBar* toolbar, 
+                          const char* text, 
+                          const std::function<QIcon(int)>& icon_creator,
+                          int initialWidth, 
+                          int minWidth, 
+                          int maxWidth, 
+                          std::function<void(int)> onWidthChanged) 
+    {
+        // 1. Create the main toolbar action
+        QAction* widthAction = new QAction(tr(text), toolbar);
+        if (icon_creator) {
+            widthAction->setIcon(icon_creator(initialWidth));
+        }
+        // 2. Create the popup menu and assign predefined thickness options
+        QMenu* menu = new QMenu(toolbar);
+        const std::vector<int> presetWidths = {1, 2, 3, 5, 8, 12, 16};
+        // Helper lambda to update state and trigger callback
+        auto applyWidth = [icon_creator, widthAction, onWidthChanged](int newWidth) {
+            if (icon_creator) {
+                widthAction->setIcon(icon_creator(newWidth));
+            }
+            if (onWidthChanged) {
+                onWidthChanged(newWidth);
+            }
+        };
+
+        // Populate preset menu actions
+        for (int w : presetWidths) {
+            if (w >= minWidth && w <= maxWidth) {
+                QString itemText = QString("%1 px").arg(w);
+                QAction* itemAction = menu->addAction(itemText);
+                
+                if (icon_creator) {
+                    itemAction->setIcon(icon_creator(w));
+                }
+
+                QObject::connect(itemAction, &QAction::triggered, toolbar, [applyWidth, w]() {
+                    applyWidth(w);
+                });
+            }
+        }
+
+        // 3. Attach menu to toolbar button
+        widthAction->setMenu(menu);
+        toolbar->addAction(widthAction);
+        // Ensure the toolbar button displays a drop-down menu indicator
+        if (QToolButton* btn = qobject_cast<QToolButton*>(toolbar->widgetForAction(widthAction))) {
+            btn->setPopupMode(QToolButton::InstantPopup);
+        }
+        return widthAction;
+    }
+
     void showContextMenu(const QPoint &pos) {
         /*
             Context menu popping-up on mouse right click
@@ -108,6 +160,8 @@ private:
         // File Menu
         // New option
         //------------
+        assert(m_canvas);
+    
         QMenu *fileMenu = menuBar()->addMenu("&File");
         QAction *newAction = new QAction("&New", this);
         newAction->setShortcut(QKeySequence::New); // Ctrl+N
@@ -244,7 +298,7 @@ private:
         //--------------
         QAction *aboutAction = new QAction("&About", this);
         connect(aboutAction, &QAction::triggered, this, [this]() {
-            QMessageBox::about(this, "About", "Qt Menu Bar Example");
+            QMessageBox::about(this, "About", "Qt Paint 0.1");
         });
         helpMenu->addAction(aboutAction);
 
@@ -256,12 +310,31 @@ private:
         // 6. Drawing color picker
         colorPick(left_toolbar.get(), "Pen Color", createPencilIcon, Qt::white, [this](const QColor& c) {
             m_canvas->setPaintColor(c);
+            m_width_action->setIcon(createWidthIcon(m_width, c));
         });
 
         // 7. Brush color picker
         colorPick(left_toolbar.get(), "Brush Color", createBrushIcon, Qt::white, [this](const QColor& c) {
             m_canvas->setBrushColor(c);
         });
+
+        auto drawing_color = m_canvas->getDrawingColor();
+        m_width_action = penWidthPickMenu(
+            left_toolbar.get(), 
+            "Pen Width", 
+            // Capture drawing_color by value so icon_creator matches std::function<QIcon(int)>
+            [drawing_color](int w) { 
+                return createWidthIcon(w, drawing_color); 
+            }, 
+            2,  // initialWidth
+            1,  // minWidth
+            50, // maxWidth
+              // Callback signature only receives (int width)
+            [this](int width) {
+                m_canvas->setPenWidth(width);
+                m_width = width;
+            }
+        );
 
         // top tool bar, Line, Circle, Rectangle, Polygon and Select actions
         //------------------------------------------------------------------
@@ -330,8 +403,8 @@ private:
     std::unique_ptr<DrawingCanvas> m_canvas;
     std::unique_ptr<QToolBar> top_toolbar;
     std::unique_ptr<QToolBar> left_toolbar;
-    QColor m_drawing_color;
-    QColor m_brush_color;
+    QAction* m_width_action;
+    int m_width;
 };
 
 #include "main.moc"
