@@ -24,6 +24,7 @@ enum class ToolMode { Line,
                     Circle, 
                     Rectangle,
                     Polygon,
+                    Arc,
                     Select,
                     Group,
                     None

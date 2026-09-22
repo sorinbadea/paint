@@ -23,6 +23,10 @@ void LineShape::draw(QPainter &painter) const {
 }
 
 void LineShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
+    // working assumption
+    assert(shape_data.start.has_value());
+    assert(shape_data.end.has_value());
+
     QLineF line(*shape_data.start, *shape_data.end);
     painter.setPen(shape_data.pencil);
     painter.setBrush(shape_data.brush);
@@ -114,6 +118,10 @@ void RectangleShape::draw(QPainter &painter) const {
 }
 
 void RectangleShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
+    // working assumption
+    assert(shape_data.start.has_value());
+    assert(shape_data.end.has_value());
+
     QRectF rect(*shape_data.start, *shape_data.end);
     rect = rect.normalized();
     painter.setPen(shape_data.pencil);
@@ -278,6 +286,9 @@ void CircleShape::draw(QPainter &painter) const {
 }
 
 void CircleShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
+    // working assumption
+    assert(shape_data.radius.has_value());
+
     if (shape_data.radius > 0) {
         painter.setPen(shape_data.pencil);
         painter.setBrush(shape_data.brush);
@@ -482,12 +493,17 @@ std::unique_ptr<Shape> PolygonShape::clone() const {
 }
 
 void PolygonShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
+    // working assumption
+    assert(shape_data.start.has_value());
+    assert(shape_data.end.has_value());
+    assert(shape_data.points.has_value());
+
     painter.setPen(shape_data.pencil);
     painter.setBrush(shape_data.brush);
-    // 1. Draw existing segments using drawPolyline
+    // Draw existing segments using drawPolyline
     painter.drawPolyline(m_points);
     painter.drawLine((*shape_data.points).last(), *shape_data.end);
-    // 3. Highlight individual vertices with small circles
+    // Highlight individual vertices with small circles
     painter.setPen(Qt::NoPen);
     painter.setBrush(Qt::red);
     for (const QPointF &pt : *shape_data.points) {
@@ -667,4 +683,241 @@ HandlePosition PolygonShape::hookTest(const QPointF& pt) const {
         return HandlePosition::LeftCenter;
     else
         return HandlePosition::None;
+}
+
+// ========================== ARC SHAPE ==========================
+ArcShape::ArcShape(const QPen &pen, const QBrush& brush)
+    : Shape(pen, brush) {
+}
+
+void ArcShape::drawHandle(QPainter& painter, const QPointF& pt, const QString& label, bool isDragging) const {
+    painter.save();
+    double m_handleRadius = 7.0;
+    QColor fill = isDragging ? QColor(255, 120, 0) : QColor(30, 144, 255);
+    painter.setBrush(fill);
+    painter.setPen(QPen(Qt::white, 2));
+    painter.drawEllipse(pt, m_handleRadius, m_handleRadius);
+    painter.setPen(Qt::black);
+    //painter.drawText(pt + QPointF(10, 5), label);
+    painter.restore();
+}
+
+std::unique_ptr<Shape> ArcShape::clone() const {
+    return std::make_unique<ArcShape>(*this);
+}
+
+void ArcShape::drawArc(QPainter &painter, const QPen& pencil, DrawingMode dm) const {
+    // AI generated and adapted
+    QLineF chordLine(m_startPoint, m_endPoint);
+    double d = chordLine.length();
+
+    if (qFuzzyIsNull(d)) {
+        drawHandle(painter, m_startPoint, "Start / End", false);
+        return;
+    }
+    // Calculate Midpoint of chord
+    QPointF chordMid = chordLine.center();
+    // Fixed height = 1/2 of distance
+    double h = d / 2.0;
+    // Calculate perpendicular normal vector pointing "upward" relative to the line
+    QPointF dir = (m_endPoint - m_startPoint) / d;
+    QPointF normal(-dir.y(), dir.x()); // 90 degree CCW rotation
+    // Apex point of the arc
+    QPointF pMid = chordMid + normal * h;
+    // Circle Radius: R = h/2 + d^2 / (8*h)
+    double R = (h / 2.0) + (d * d) / (8.0 * h); // Equals 0.625 * d
+    // Center of Circle (offset from chord midpoint along normal)
+    QPointF center = chordMid + normal * (h - R);
+    // Angles in degrees (converting top-left origin Y to standard math coordinates)
+    double aStart = qRadiansToDegrees(qAtan2(-(m_startPoint.y() - center.y()), m_startPoint.x() - center.x()));
+    double aMid   = qRadiansToDegrees(qAtan2(-(pMid.y() - center.y()), pMid.x() - center.x()));
+    double aEnd   = qRadiansToDegrees(qAtan2(-(m_endPoint.y() - center.y()), m_endPoint.x() - center.x()));
+    // Calculate sweep angle directing through the apex point
+    double sweep = aEnd - aStart;
+    if (sweep < 0) sweep += 360.0;
+    double midSweep = aMid - aStart;
+    if (midSweep < 0) midSweep += 360.0;
+    if (midSweep > sweep) {
+        sweep -= 360.0;
+    }
+    // 7. Render Arc
+    QRectF bounds(center.x() - R, center.y() - R, 2 * R, 2 * R);
+    painter.setPen(pencil);
+    painter.setBrush(Qt::NoBrush);
+    painter.drawArc(bounds, qRound(aStart * 16.0), qRound(sweep * 16.0));
+    if(dm == DrawingMode::Preview) {
+        // Render Chord baseline (dashed guide line)
+        painter.setPen(QPen(QColor(Qt::gray), 1, Qt::DashLine));
+        painter.drawLine(m_startPoint, m_endPoint);
+        // Render Draggable End Handles
+        drawHandle(painter, m_startPoint, "Start", false);
+        drawHandle(painter, m_endPoint, "End", true);
+    }
+}
+
+void ArcShape::draw(QPainter &painter) const {
+    painter.setPen(m_pen);
+    painter.setBrush(m_brush);
+    drawArc(painter, m_pen, DrawingMode::Final);
+}
+
+void ArcShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
+    // working assumption
+    assert(shape_data.start.has_value());
+    assert(shape_data.end.has_value());
+
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(shape_data.pencil);
+    painter.setBrush(shape_data.brush);
+    m_startPoint = *shape_data.start;
+    m_endPoint = *shape_data.end;
+    drawArc(painter, shape_data.pencil, DrawingMode::Preview);
+}
+
+void ArcShape::drawSelect(QPainter &painter, const bool draw_hooks) const {
+    painter.setPen(m_shape_select_pencil);
+    drawArc(painter, m_shape_select_pencil, DrawingMode::Preview);
+}
+
+ShapeType ArcShape::type() const { 
+    return ShapeType::Arc;
+}
+
+void ArcShape::serialize(QDataStream &out) const {
+    out << m_pen << m_brush;
+}
+
+void ArcShape::deserialize(QDataStream &in) {
+    in >> m_pen >> m_brush;
+}
+
+bool ArcShape::contains(const QPointF &pt) const {
+    // AI generated code !
+    double tolerance = 6.0;
+    QLineF chordLine(m_startPoint, m_endPoint);
+    double d = chordLine.length();
+
+    // Degenerate case: Start and End are the same point
+    if (qFuzzyIsNull(d)) {
+        return QLineF(pt, m_startPoint).length() <= tolerance;
+    }
+
+    // TODO some vars already computed
+    // 1. Recompute Circle Center & Radius (matching drawArc)
+    QPointF chordMid = chordLine.center();
+    double h = d / 2.0;
+    QPointF dir = (m_endPoint - m_startPoint) / d;
+    QPointF normal(-dir.y(), dir.x()); // 90 degree CCW rotation
+    QPointF pMid = chordMid + normal * h;
+
+    double R = (h / 2.0) + (d * d) / (8.0 * h); // Equals 0.625 * d
+    // m_centerPoint will be used in zoomInOut
+    m_centerPoint = chordMid + normal * (h - R);
+
+    // 2. Distance Check: Is point near the circumference?
+    double distToCenter = QLineF(pt, m_centerPoint).length();
+    if (std::abs(distToCenter - R) > tolerance) {
+        return false; // Point is too far from the circular arc line
+    }
+
+    // 3. Angular Check: Is point within the arc's angular sweep?
+    double aStart = qRadiansToDegrees(qAtan2(-(m_startPoint.y() - m_centerPoint.y()), m_startPoint.x() - m_centerPoint.x()));
+    double aMid   = qRadiansToDegrees(qAtan2(-(pMid.y() - m_centerPoint.y()), pMid.x() - m_centerPoint.x()));
+    double aEnd   = qRadiansToDegrees(qAtan2(-(m_endPoint.y() - m_centerPoint.y()), m_endPoint.x() - m_centerPoint.x()));
+
+    // Normalize angles to [0, 360)
+    auto normalize = [](double angle) {
+        angle = std::fmod(angle, 360.0);
+        return (angle < 0) ? angle + 360.0 : angle;
+    };
+
+    double sweep = aEnd - aStart;
+    if (sweep < 0) sweep += 360.0;
+
+    double midSweep = aMid - aStart;
+    if (midSweep < 0) midSweep += 360.0;
+
+    if (midSweep > sweep) {
+        sweep -= 360.0;
+    }
+
+    // Calculate click angle relative to start angle
+    double clickAngle = qRadiansToDegrees(qAtan2(-(pt.y() - m_centerPoint.y()), pt.x() - m_centerPoint.x()));
+    double relativeClick = normalize(clickAngle - aStart);
+
+    // If sweep is positive (CCW), relative angle must be between 0 and sweep
+    // If sweep is negative (CW), relative angle normalized must be between 360 + sweep and 360
+    if (sweep >= 0) {
+        return relativeClick <= sweep;
+    } else {
+        return relativeClick >= (360.0 + sweep);
+    }
+}
+
+void ArcShape::addPoint(const QPointF& qpoint) {
+}
+
+QPolygonF ArcShape::getPoints() {
+    return m_polygon_points;
+}
+
+void ArcShape::setShapeData(const ShapeData_t& shape_data) {
+}
+
+void ArcShape::moveRelative(const QPointF &delta) {
+    m_startPoint += delta;
+    m_endPoint += delta;
+}
+
+void ArcShape::resizeShape(const QPointF &delta, const HandlePosition hp) {
+    // AI generated and adapted code
+}
+
+void ArcShape::zoomInOut(const qreal& factor) {
+    // m_centerPoint computed in contains() method
+    m_startPoint = m_centerPoint + (m_startPoint - m_centerPoint) * factor;
+    // Scale end point relative to centerPoint
+    m_endPoint = m_centerPoint + (m_endPoint - m_centerPoint) * factor;
+}
+
+void ArcShape::toolHint(const QPoint &point, const QString& explanation) {
+    // Display the tooltip near the cursor
+    // Parameters: pos, text, widget parent, rect boundary, duration in ms
+    QToolTip::showText(point + QPoint(10, 10), explanation, nullptr, QRect(), 2000);
+}
+
+HandlePosition ArcShape::hookTest(const QPointF& pt) const {
+    // AI generated and adapted code
+    /*
+    if (m_points.isEmpty()) 
+        return HandlePosition::None;
+
+    QRectF frameRect = m_points.boundingRect();
+    const QPointF topCenter(frameRect.center().x(), frameRect.top());
+    const QPointF rightCenter(frameRect.right(), frameRect.center().y());
+    const QPointF bottomCenter(frameRect.center().x(), frameRect.bottom());
+    const QPointF leftCenter(frameRect.left(), frameRect.center().y());
+
+    // Optional padding (in pixels) to make small handles easier to hit/click
+    const qreal total_size = handle_size + (hit_padding * 2.0);
+    auto makeHitRect = [total_size](const QPointF& center) {
+        return QRectF(
+            center.x() - total_size / 2.0,
+            center.y() - total_size / 2.0,
+            total_size,
+            total_size
+        );
+    };
+
+    if (makeHitRect(topCenter).contains(pt))
+        return HandlePosition::TopCenter;
+    else if (makeHitRect(rightCenter).contains(pt))
+        return HandlePosition::RightCenter;
+    else if (makeHitRect(bottomCenter).contains(pt))
+        return HandlePosition::BottomCenter;
+    else if (makeHitRect(leftCenter).contains(pt))
+        return HandlePosition::LeftCenter;
+    else
+        return HandlePosition::None; */
+   return HandlePosition::None;
 }

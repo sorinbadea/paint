@@ -260,8 +260,7 @@ QIcon createWidthIcon(int width, const QColor& pen_color) {
     QSize size = QSize(ICON_SIZE, ICON_SIZE);
     pixmap.fill(Qt::transparent);
 
-    QPainter painter(&pixmap);
-    
+    QPainter painter(&pixmap);   
     // Enable anti-aliasing for smooth, high-quality rendering
     painter.setRenderHint(QPainter::Antialiasing);
 
@@ -278,6 +277,41 @@ QIcon createWidthIcon(int width, const QColor& pen_color) {
 
     painter.drawLine(startX, centerY, endX, centerY);
     painter.end();
+    return QIcon(pixmap);
+}
 
+QIcon createArcToolIcon(const QColor& iconColor, const QSize& iconSize) {
+    QPixmap pixmap(iconSize);
+    pixmap.fill(Qt::transparent);
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    // 1. Setup pen for toolbar icon line work
+    QPen pen(iconColor);
+    pen.setWidthF(2.2);
+    pen.setCapStyle(Qt::RoundCap);
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+
+    // 2. Define a clean 180-degree arch centered inside the 32x32 icon canvas
+    // Bounding box inset by 5px margin to keep the stroke clear of button edges
+    QRectF arcBounds(5.0, 7.0, 22.0, 22.0);
+
+    // Angles in 16ths of a degree (0° = 3 o'clock; 180° = 180-degree sweep CCW)
+    int startAngle16ths = 0 * 16;
+    int spanAngle16ths = 180 * 16;
+
+    painter.drawArc(arcBounds, startAngle16ths, spanAngle16ths);
+
+    // 3. Draw small endpoint dots to match your CAD handle style
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(iconColor);
+    
+    // Left handle (180° point) and Right handle (0° point)
+    //painter.drawEllipse(QPointF(5.0, 18.0), 2.5, 2.5);
+    //painter.drawEllipse(QPointF(27.0, 18.0), 2.5, 2.5);
+
+    painter.end();
     return QIcon(pixmap);
 }

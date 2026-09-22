@@ -3,11 +3,18 @@
 
 constexpr ShapeType getShapeType(ToolMode tm) noexcept {
     switch (tm) {
-        case ToolMode::Line:      return ShapeType::Line;
-        case ToolMode::Circle:    return ShapeType::Circle;
-        case ToolMode::Rectangle: return ShapeType::Rectangle;
-        case ToolMode::Polygon:   return ShapeType::Polygon;
-        default:                  return ShapeType::None;
+        case ToolMode::Line:
+            return ShapeType::Line;
+        case ToolMode::Circle:
+            return ShapeType::Circle;
+        case ToolMode::Rectangle:
+            return ShapeType::Rectangle;
+        case ToolMode::Polygon:
+            return ShapeType::Polygon;
+        case ToolMode::Arc:
+            return ShapeType::Arc;
+        default:
+            return ShapeType::None;
     }
 }
 
@@ -218,7 +225,7 @@ void DrawingCanvas::paintEvent(QPaintEvent *) {
         previewData.end = m_current_pos;
         previewData.radius = std::hypot(m_current_pos.x() - m_start_pos.x(), m_current_pos.y() - m_start_pos.y());
         previewData.points = m_shape->getPoints();
-        QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
+        QPen pencil(QPen(m_selected_color, 2, Qt::DashLine));
         previewData.pencil = pencil;
         previewData.brush = m_select_brush;
         m_shape->draw(painter, previewData);
@@ -292,6 +299,9 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
                 }
                 m_shape->addPoint(event->position());
             }
+            else if (m_mode == ToolMode::Arc) {
+                m_shape = std::make_unique<ArcShape>(pencil, brush);              
+            }
             else if (m_mode == ToolMode::Group) {
                 if (m_shapes.size() == 0)
                     return;
@@ -319,7 +329,7 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
         if (m_mode == ToolMode::Polygon)
             // tool hint text in case of Polygon
             m_shape->toolHint(mapToGlobal(event->position().toPoint()),
-                std::move(QString("Mouse right click to finish the polygon")));
+                std::move(QString("Mouse right click to finish the shape")));
 
         m_current_pos = event->position();
         QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
@@ -375,16 +385,16 @@ void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
         }
         else if (m_isDrawing && m_shape) {
             // Drawing case
-            if (m_mode != ToolMode::Polygon && m_mode != ToolMode::None) {
+            if (m_mode == ToolMode::Line || m_mode == ToolMode::Circle || m_mode == ToolMode::Rectangle || m_mode == ToolMode::Arc) {
                 // Line, Rectangle, Circle and the grouping rectangle
                 m_current_pos = event->position();
                 // Store the new shape
                 finalizeShape(event->position());
             }
-            else
-                // Polygon
+            else if (m_mode == ToolMode::Polygon)
+                // Polygon or Arc
                 m_shape->toolHint(mapToGlobal(event->position().toPoint()),
-                    std::move(QString("Right click to finish the polygon")));
+                    std::move(QString("Right click to finish the shape")));
         }
         else if (m_group_shapes.size() > 0) {
             assert(m_shape);

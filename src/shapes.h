@@ -17,6 +17,7 @@ enum class ShapeType : uint8_t {
     Circle = 2,
     Rectangle = 3,
     Polygon = 4,
+    Arc = 5,
     None
 };
 
@@ -27,6 +28,11 @@ enum HandlePosition : uint8_t {
     LeftCenter,
     RightCenter,
     Inside
+};
+
+enum DrawingMode : uint8_t {
+    Preview,
+    Final
 };
 
 typedef struct {
@@ -209,6 +215,36 @@ public:
 private:
     //coordinates
     QPolygonF m_points;
+};
+
+class ArcShape : public Shape {
+public:
+    ArcShape() = default;
+    ArcShape(const QPen &pen, const QBrush& brush);
+    std::unique_ptr<Shape> clone() const override;
+    void draw(QPainter &painter) const override;
+    void draw(QPainter &painter, const ShapeData_t& shape_data) const override;
+    void drawSelect(QPainter &painter, const bool draw_hooks) const override;
+    ShapeType type() const override;
+    HandlePosition hookTest(const QPointF& pt) const override;
+    bool contains(const QPointF &point) const override;
+    void setShapeData(const ShapeData_t& shape_data) override;
+    void addPoint(const QPointF& p) override;
+    QPolygonF getPoints() override;
+    void moveRelative(const QPointF &delta) override;
+    void resizeShape(const QPointF &delta, const HandlePosition hp) override;
+    void zoomInOut(const qreal& factor) override;
+    void toolHint(const QPoint &point, const QString& explanation) override;
+    void serialize(QDataStream &out) const override;
+    void deserialize(QDataStream &in) override;
+
+private:
+    //coordinates
+    mutable QPointF m_startPoint, m_endPoint, m_centerPoint;
+    std::list<QPointF> m_points;
+    QPolygonF m_polygon_points;
+    void drawArc(QPainter &painter, const QPen& pencil, DrawingMode dm) const;
+    void drawHandle(QPainter& painter, const QPointF& pt, const QString& label, bool isDragging) const;
 };
 
 #endif

@@ -23,20 +23,15 @@ public:
     }
 
 private:
-    QAction* penWidthPickMenu(QToolBar* toolbar, 
+QAction* penWidthPickMenu(QToolBar* toolbar, 
                           const char* text, 
                           const std::function<QIcon(int)>& icon_creator,
                           int initialWidth, 
-                          int minWidth, 
-                          int maxWidth, 
-                          std::function<void(int)> onWidthChanged) 
-    {
-        // 1. Create the main toolbar action
+                          std::function<void(int)> onWidthChanged) {
         QAction* widthAction = new QAction(tr(text), toolbar);
         if (icon_creator) {
             widthAction->setIcon(icon_creator(initialWidth));
         }
-        // 2. Create the popup menu and assign predefined thickness options
         QMenu* menu = new QMenu(toolbar);
         const std::vector<int> presetWidths = {1, 2, 3, 5, 8, 12, 16};
         // Helper lambda to update state and trigger callback
@@ -51,21 +46,16 @@ private:
 
         // Populate preset menu actions
         for (int w : presetWidths) {
-            if (w >= minWidth && w <= maxWidth) {
                 QString itemText = QString("%1 px").arg(w);
                 QAction* itemAction = menu->addAction(itemText);
-                
                 if (icon_creator) {
                     itemAction->setIcon(icon_creator(w));
                 }
-
                 QObject::connect(itemAction, &QAction::triggered, toolbar, [applyWidth, w]() {
                     applyWidth(w);
                 });
-            }
         }
-
-        // 3. Attach menu to toolbar button
+        // Attach menu to toolbar button
         widthAction->setMenu(menu);
         toolbar->addAction(widthAction);
         // Ensure the toolbar button displays a drop-down menu indicator
@@ -95,7 +85,7 @@ private:
             connect(action_remove, &QAction::triggered, this, [this]() {m_canvas->removeShape();});
         }
         // last step of Polygon drawing
-        else if (m_canvas->getToolMode() == ToolMode::Polygon){
+        else if (m_canvas->getToolMode() == ToolMode::Polygon || m_canvas->getToolMode() == ToolMode::Arc){
             QAction *action_keep = contextMenu.addAction("Done");
             connect(action_keep, &QAction::triggered, this, [this]() {m_canvas->restoreShape();});
         }
@@ -180,7 +170,7 @@ private:
             this, 
             "File open", 
             QDir::currentPath(),
-            "Fișiere .vec (*.*)"
+            "Files .vec (*.*)"
         );
         if (filePath.isEmpty()) {
             return;
@@ -250,12 +240,20 @@ private:
         toolsMenu->addAction(rectangleAction);
 
         // Polygon option
-        //--------------
+        //---------------
         QAction *polygonAction = new QAction("&Polygon Mode", this);
         connect(polygonAction, &QAction::triggered, this, [this]() {
             m_canvas->setMode(ToolMode::Polygon);
         });
         toolsMenu->addAction(polygonAction);
+
+        // Arc option
+        //------------
+        QAction *arcAction = new QAction("&Arc Mode", this);
+        connect(arcAction, &QAction::triggered, this, [this]() {
+            m_canvas->setMode(ToolMode::Arc);
+        });
+        toolsMenu->addAction(arcAction);
 
         // Edit Menu
         //------------
@@ -307,17 +305,18 @@ private:
         //-------------------------------------
         left_toolbar = std::make_unique<QToolBar>("Pencils", this);
         addToolBar(Qt::LeftToolBarArea, left_toolbar.get());
-        // 6. Drawing color picker
+        // Drawing color picker
         colorPick(left_toolbar.get(), "Pen Color", createPencilIcon, Qt::white, [this](const QColor& c) {
             m_canvas->setPaintColor(c);
             m_width_action->setIcon(createWidthIcon(m_width, c));
         });
 
-        // 7. Brush color picker
+        // Brush color picker
         colorPick(left_toolbar.get(), "Brush Color", createBrushIcon, Qt::white, [this](const QColor& c) {
             m_canvas->setBrushColor(c);
         });
 
+        // Pen width picker
         auto drawing_color = m_canvas->getDrawingColor();
         m_width_action = penWidthPickMenu(
             left_toolbar.get(), 
@@ -327,9 +326,7 @@ private:
                 return createWidthIcon(w, drawing_color); 
             }, 
             2,  // initialWidth
-            1,  // minWidth
-            50, // maxWidth
-              // Callback signature only receives (int width)
+            // Callback signature only receives (int width)
             [this](int width) {
                 m_canvas->setPenWidth(width);
                 m_width = width;
@@ -362,7 +359,7 @@ private:
             m_canvas->setMode(ToolMode::Circle);
         });
 
-        // 3. Add Circle Action with custom icon
+        // 3. Add Rectangle Action with custom icon
         QAction *rectangleToolBarAction = new QAction(createRectangleIcon(), "Rectangle", this);
         rectangleToolBarAction->setCheckable(true);
         top_toolbar->addAction(rectangleToolBarAction);
@@ -380,7 +377,16 @@ private:
             m_canvas->setMode(ToolMode::Polygon);
         });
 
-        // 5. Add Select Action with custom icon
+        // 5. Add Polygon Action with custom icon
+        QAction *arcToolBarAction = new QAction(createArcToolIcon(), "Arc", this);
+        arcToolBarAction->setCheckable(true);
+        top_toolbar->addAction(arcToolBarAction);
+        toolGroup->addAction(arcToolBarAction);
+        connect(arcToolBarAction, &QAction::triggered, this, [this]() {
+            m_canvas->setMode(ToolMode::Arc);
+        });
+
+        // 6. Add Select Action with custom icon
         QAction *selectToolBarAction = new QAction(createSelectIcon(), "Select", this);
         selectToolBarAction->setCheckable(true);
         top_toolbar->addAction(selectToolBarAction);
@@ -389,7 +395,7 @@ private:
             m_canvas->setMode(ToolMode::Select);
         });
 
-        // 6. Add Group shapes option
+        // 7. Add Group shapes option
         QAction *groupToolBarAction = new QAction(createGroupIcon(), "Group", this);
         groupToolBarAction->setCheckable(true);
         top_toolbar->addAction(groupToolBarAction);
@@ -400,11 +406,11 @@ private:
     }
 
     // private data
+    int m_width;
     std::unique_ptr<DrawingCanvas> m_canvas;
     std::unique_ptr<QToolBar> top_toolbar;
     std::unique_ptr<QToolBar> left_toolbar;
     QAction* m_width_action;
-    int m_width;
 };
 
 #include "main.moc"
