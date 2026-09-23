@@ -1,10 +1,10 @@
 This is a simple vectorial drawing app written in C++/QT
 
 It allows to draw the following shapes:
-Lines, Rectangle, Circles and Polygons
+Lines, Rectangle, Circles, Arcs and Polygons
 
 It allows the following operations:
-- draw a Line, Circle, Rectangle or Polygon;
+- draw a Line, Circle, Rectangle, Polygon or Arc;
 - select a shape by pressing the left mouse button, than drag
   or zoom in/out using the mouse wheel;
 - select a shape than zoom verically or horizontally

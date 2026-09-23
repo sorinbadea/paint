@@ -241,8 +241,6 @@ public:
 private:
     //coordinates
     mutable QPointF m_startPoint, m_endPoint, m_centerPoint;
-    std::list<QPointF> m_points;
-    QPolygonF m_polygon_points;
     void drawArc(QPainter &painter, const QPen& pencil, DrawingMode dm) const;
     void drawHandle(QPainter& painter, const QPointF& pt, const QString& label, bool isDragging) const;
 };

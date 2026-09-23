@@ -3,6 +3,7 @@
 // -------------------------------------------------------------
 #include "shapes.h"
 #include <QToolTip>
+#include <algorithm>
 
 // Define the pen and the brush for the selected shapes
 Shape::Shape(QPen pen, QBrush brush) :
@@ -73,10 +74,11 @@ QPolygonF LineShape::getPoints() {
 }
 
 void LineShape::setShapeData(const ShapeData_t& shape_data) {
-    if (shape_data.start && shape_data.end) {
-        m_line.setP1(shape_data.start.value());
-        m_line.setP1(shape_data.end.value());
-    }
+    // working assumption
+    assert(shape_data.start.has_value());
+    assert(shape_data.end.has_value());
+    m_line.setP1(shape_data.start.value());
+    m_line.setP1(shape_data.end.value());
 }
 
 void LineShape::moveRelative(const QPointF &delta) {
@@ -188,11 +190,12 @@ QPolygonF RectangleShape::getPoints() {
 }
 
 void RectangleShape::setShapeData(const ShapeData_t& shape_data) {
-    if (shape_data.start && shape_data.end) {
-        m_rectangle.setTopLeft(shape_data.start.value());
-        m_rectangle.setBottomRight(shape_data.end.value());
-        m_rectangle = m_rectangle.normalized();
-    }
+    // working assumption
+    assert(shape_data.start.has_value());
+    assert(shape_data.end.has_value());
+    m_rectangle.setTopLeft(shape_data.start.value());
+    m_rectangle.setBottomRight(shape_data.end.value());
+    m_rectangle = m_rectangle.normalized();
 }
 
 void RectangleShape::moveRelative(const QPointF &delta) {
@@ -288,7 +291,6 @@ void CircleShape::draw(QPainter &painter) const {
 void CircleShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
     // working assumption
     assert(shape_data.radius.has_value());
-
     if (shape_data.radius > 0) {
         painter.setPen(shape_data.pencil);
         painter.setBrush(shape_data.brush);
@@ -387,11 +389,12 @@ void CircleShape::addPoint(const QPointF& p) {
 }
 
 void CircleShape::setShapeData(const ShapeData_t& shape_data) {
-    if (shape_data.start && shape_data.end) {
-        m_radius_x = std::hypot(shape_data.end.value().x()
-        - shape_data.start.value().x(), shape_data.end.value().y() - shape_data.start.value().y());
-        m_radius_y = m_radius_x;
-    }
+    // working assumption
+    assert(shape_data.start.has_value());
+    assert(shape_data.end.has_value());
+    m_radius_x = std::hypot(shape_data.end.value().x()
+         - shape_data.start.value().x(), shape_data.end.value().y() - shape_data.start.value().y());
+    m_radius_y = m_radius_x;
 }
 
 void CircleShape::moveRelative(const QPointF &delta) {
@@ -784,11 +787,11 @@ ShapeType ArcShape::type() const {
 }
 
 void ArcShape::serialize(QDataStream &out) const {
-    out << m_pen << m_brush;
+    out << m_pen << m_brush << m_startPoint << m_endPoint;
 }
 
 void ArcShape::deserialize(QDataStream &in) {
-    in >> m_pen >> m_brush;
+    in >> m_pen >> m_brush >> m_startPoint >> m_endPoint;
 }
 
 bool ArcShape::contains(const QPointF &pt) const {
@@ -858,7 +861,80 @@ void ArcShape::addPoint(const QPointF& qpoint) {
 }
 
 QPolygonF ArcShape::getPoints() {
-    return m_polygon_points;
+    /*
+        AI generated method
+        Turn the Arc shape into a polygon
+    */
+    QPolygonF poly;
+    uint32_t segments = 32;
+
+    QLineF chordLine(m_startPoint, m_endPoint);
+    double d = chordLine.length();
+
+    // Degenerate case: single point
+    if (qFuzzyIsNull(d)) {
+        poly << m_startPoint;
+        return poly;
+    }
+
+    // 1. Recompute Circle Geometry (matching drawArc)
+    QPointF chordMid = chordLine.center();
+    double h = d / 2.0;
+
+    QPointF dir = (m_endPoint - m_startPoint) / d;
+    QPointF normal(-dir.y(), dir.x()); // 90 degree CCW rotation
+
+    QPointF pMid = chordMid + normal * h;
+    double R = (h / 2.0) + (d * d) / (8.0 * h); // Equals 0.625 * d
+    QPointF center = chordMid + normal * (h - R);
+
+    // 2. Compute Angles (converted to radians for qCos/qSin)
+    double aStartRad = qAtan2(-(m_startPoint.y() - center.y()), m_startPoint.x() - center.x());
+    double aMidRad   = qAtan2(-(pMid.y() - center.y()), pMid.x() - center.x());
+    double aEndRad   = qAtan2(-(m_endPoint.y() - center.y()), m_endPoint.x() - center.x());
+
+    double aStartDeg = qRadiansToDegrees(aStartRad);
+    double aMidDeg   = qRadiansToDegrees(aMidRad);
+    double aEndDeg   = qRadiansToDegrees(aEndRad);
+
+    double sweepDeg = aEndDeg - aStartDeg;
+    if (sweepDeg < 0) sweepDeg += 360.0;
+
+    double midSweepDeg = aMidDeg - aStartDeg;
+    if (midSweepDeg < 0) midSweepDeg += 360.0;
+
+    if (midSweepDeg > sweepDeg) {
+        sweepDeg -= 360.0;
+    }
+
+    // Convert back to radians for sampling steps
+    double startRad = qDegreesToRadians(aStartDeg);
+    double sweepRad = qDegreesToRadians(sweepDeg);
+
+    // Ensure at least 2 segments
+    segments = std::max<unsigned>(2, segments);
+
+    // 3. Sample Points Along the Arc
+    poly.reserve(segments + 1);
+
+    for (int i = 0; i <= segments; ++i) {
+        double t = static_cast<double>(i) / segments; // Interpolation factor [0.0, 1.0]
+        double currentAngleRad = startRad + t * sweepRad;
+
+        // Note: Y is inverted (- R * qSin) to match Qt screen coordinates
+        double x = center.x() + R * qCos(currentAngleRad);
+        double y = center.y() - R * qSin(currentAngleRad);
+
+        poly.append(QPointF(x, y));
+    }
+
+    // Explicitly lock exact endpoints to prevent floating point drift
+    if (!poly.isEmpty()) {
+        poly.first() = m_startPoint;
+        poly.last()  = m_endPoint;
+    }
+
+    return poly;
 }
 
 void ArcShape::setShapeData(const ShapeData_t& shape_data) {

@@ -22,6 +22,7 @@ DrawingCanvas::DrawingCanvas(QWidget *parent)
     : QWidget(parent),
     m_isDrawing(false),
     m_grouping(false),
+    m_mode(ToolMode::None),
     m_selected_shape(nullptr),
     m_pen_width(2),
     m_drawing_color(Qt::blue),
@@ -66,11 +67,17 @@ void DrawingCanvas::clearAll() {
     update();
 }
 
-void DrawingCanvas::setZoomFactor(const qreal& zoom_factor) {
-    if (m_selected_shape) {
-        m_selected_shape->zoomInOut(zoom_factor);
-        update();
+void DrawingCanvas::setShapeZoomFactor(const qreal& zoom_factor) {
+    assert(m_selected_shape);
+    m_selected_shape->zoomInOut(zoom_factor);
+    update();
+}
+
+void DrawingCanvas::setGroupZoomFactor(const qreal& zoom_factor) {
+    for(const auto& shape : m_group_shapes) {
+        shape->zoomInOut(zoom_factor);
     }
+    update();
 }
 
 void DrawingCanvas::zommInOut(const qreal& zoom_factor) {
@@ -106,9 +113,15 @@ void DrawingCanvas::finalizeShape(std::optional<QPointF> const&  point) {
        - add the shape to existing shapes
        - handle the grouping case
     */
+
+    qDebug() << "Mouse press event m_drawing " << m_isDrawing << " grouping " << m_grouping <<
+        (m_shape == nullptr ? " shape not defined " : " shape defined ");
+
     assert(m_shape);
     // reset drawing flag
     m_isDrawing = false;
+
+    qDebug() << "grouping in finalize? "<< m_grouping;
 
     if (m_grouping) {
         // build the rectangle to group several shapes
@@ -156,19 +169,33 @@ void DrawingCanvas::restoreShape() {
 }
 
 void DrawingCanvas::removeShape() {
-    if (m_selected_shape) {
-        m_shapes.erase(
-            std::remove_if(m_shapes.begin(), m_shapes.end(),
-                [this](const std::unique_ptr<Shape>& shape) {
-                    return shape.get() == m_selected_shape;
-                }),
-            m_shapes.end()
-        );
-        QGuiApplication::restoreOverrideCursor();
-        m_selected_shape = nullptr;
+    assert(m_selected_shape);
+    m_shapes.erase(
+        std::remove_if(m_shapes.begin(), m_shapes.end(),
+            [this](const std::unique_ptr<Shape>& shape) {
+                return shape.get() == m_selected_shape;
+            }),
+        m_shapes.end()
+    );
+    QGuiApplication::restoreOverrideCursor();
+    m_selected_shape = nullptr;
     update();
-    }
 }
+
+ void DrawingCanvas::removeGroup() {
+    m_shapes.erase(
+        std::remove_if(m_shapes.begin(), m_shapes.end(),
+            [this](const std::unique_ptr<Shape>& shape) {
+                auto it = std::find(m_group_shapes.begin(), m_group_shapes.end(), shape.get());
+                return it != m_group_shapes.end();
+            }),
+        m_shapes.end()
+    );
+    QGuiApplication::restoreOverrideCursor();
+    m_group_shapes.clear();
+    m_grouping = false;
+    update();
+ }
 
 void DrawingCanvas::cloneShape() {
     assert(m_shape == nullptr);
@@ -182,6 +209,10 @@ void DrawingCanvas::cloneShape() {
 
 Shape* DrawingCanvas::isShapeSelected() const {
     return m_selected_shape;
+}
+
+bool DrawingCanvas::isGrouping() const {
+    return m_group_shapes.size() > 0;
 }
 
 ToolMode DrawingCanvas::getToolMode() const {
@@ -213,6 +244,7 @@ void DrawingCanvas::paintEvent(QPaintEvent *) {
                 shape->draw(painter);
         }
     }
+    // in case of grouping draw the rectangle group
     if(m_shape && m_grouping)
         m_shape->draw(painter);
 
@@ -233,6 +265,10 @@ void DrawingCanvas::paintEvent(QPaintEvent *) {
 }
 
 void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
+
+    qDebug() << "Mouse press event m_drawing " << m_isDrawing << " grouping " << m_grouping <<
+        (m_shape == nullptr ? " shape not defined " : " shape defined ");
+
     if (event->button() == Qt::LeftButton) {
         if (m_group_shapes.size() > 0) {
             // grouping shapes case
@@ -310,6 +346,7 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
                 // create the m_shape representing the rectangle grouping the shapes
                 m_shape = std::make_unique<RectangleShape>(rect, pencil, m_grouping_brush);
                 m_grouping = true;
+                qDebug() << "grouping when m_shape is created? "<< m_grouping;
             }
             else
                 qDebug() << "Mouse press event, unknown drawing mode..";
@@ -320,6 +357,10 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
 }
 
 void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
+
+    qDebug() << "Mouse press event m_drawing " << m_isDrawing << " grouping " << m_grouping <<
+        (m_shape == nullptr ? " shape not defined " : " shape defined ");
+
     if (m_isDrawing) {
         // Drawing mode
         // return if no new shape
@@ -333,9 +374,13 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
 
         m_current_pos = event->position();
         QPen pencil(QPen(m_selected_color, m_pen_width, Qt::DashLine));
+
         ShapeData_t shape_data = {
-            m_shape->type(), m_start_pos, m_current_pos, std::nullopt, m_shape->getPoints(), m_select_brush, pencil
-        };
+            m_shape->type(),
+            m_start_pos, m_current_pos,
+            std::nullopt,
+            m_shape->getPoints(),
+            m_select_brush, pencil };
         m_shape->setShapeData(shape_data);
         update(); // Re-trigger paintEvent for preview
         event->accept();
@@ -377,6 +422,10 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
+
+    qDebug() << "Mouse press event m_drawing " << m_isDrawing << " grouping " << m_grouping <<
+        (m_shape == nullptr ? " shape not defined " : " shape defined ");
+
     if (event->button() == Qt::LeftButton) {
         // one shape is selected
         if (m_selected_shape != nullptr) {
@@ -385,8 +434,12 @@ void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
         }
         else if (m_isDrawing && m_shape) {
             // Drawing case
-            if (m_mode == ToolMode::Line || m_mode == ToolMode::Circle || m_mode == ToolMode::Rectangle || m_mode == ToolMode::Arc) {
-                // Line, Rectangle, Circle and the grouping rectangle
+            if (   m_mode == ToolMode::Line 
+                || m_mode == ToolMode::Circle
+                || m_mode == ToolMode::Rectangle
+                || m_mode == ToolMode::Arc
+                || m_mode == ToolMode::Group) {
+                // Line, Rectangle, Circle, Arc and the grouping rectangle
                 m_current_pos = event->position();
                 // Store the new shape
                 finalizeShape(event->position());
@@ -518,6 +571,9 @@ bool DrawingCanvas::loadFromFile(const QString &filePath) {
                 break;
             case ShapeType::Polygon:
                 shape = std::make_unique<PolygonShape>();
+                break;
+            case ShapeType::Arc:
+                shape = std::make_unique<ArcShape>();
                 break;
             default:
                 // Unknown shape type encountered in file

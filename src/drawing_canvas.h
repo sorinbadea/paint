@@ -46,15 +46,18 @@ public:
     void setPenWidth(int width);
     void setPaintColor(const QColor& color);
     void setBrushColor(const QColor& brush);
-    void setZoomFactor(const qreal& zoom_factor);
+    void setShapeZoomFactor(const qreal& zoom_factor);
+    void setGroupZoomFactor(const qreal& zoom_factor);
     // getters
     Shape* isShapeSelected() const;
+    bool isGrouping() const;
     ToolMode getToolMode() const;
     const QColor& getDrawingColor() const;
     // context menu actions
     void cloneShape();   // Copy/Paste
     void restoreShape(); // Restore shape properties
-    void removeShape();  // Remove shape 
+    void removeShape();  // Remove selected shape
+    void removeGroup();  // Remove grouped shapes
     void zommInOut(const qreal& factor);
     
 protected:

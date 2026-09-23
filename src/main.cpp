@@ -76,16 +76,26 @@ QAction* penWidthPickMenu(QToolBar* toolbar,
             connect(copy_action, &QAction::triggered, this, [this]() {m_canvas->cloneShape();});
 
             QAction *action_zoom_in = contextMenu.addAction("Zoom In");
-            connect(action_zoom_in, &QAction::triggered, this, [this]() {m_canvas->setZoomFactor(1.1);});
+            connect(action_zoom_in, &QAction::triggered, this, [this]() {m_canvas->setShapeZoomFactor(1.1);});
 
             QAction *action_zoom_out = contextMenu.addAction("Zoom Out");
-            connect(action_zoom_out, &QAction::triggered, this, [this]() {m_canvas->setZoomFactor(0.9);});
+            connect(action_zoom_out, &QAction::triggered, this, [this]() {m_canvas->setShapeZoomFactor(0.9);});
 
             QAction *action_remove = contextMenu.addAction("Delete");
             connect(action_remove, &QAction::triggered, this, [this]() {m_canvas->removeShape();});
         }
+        else if (m_canvas->isGrouping()) {
+            QAction *action_zoom_in = contextMenu.addAction("Zoom In");
+            connect(action_zoom_in, &QAction::triggered, this, [this]() {m_canvas->setGroupZoomFactor(1.1);});
+
+            QAction *action_zoom_out = contextMenu.addAction("Zoom Out");
+            connect(action_zoom_out, &QAction::triggered, this, [this]() {m_canvas->setGroupZoomFactor(0.9);});
+
+            QAction *action_remove = contextMenu.addAction("Remove");
+            connect(action_remove, &QAction::triggered, this, [this]() {m_canvas->removeGroup();});
+        }
         // last step of Polygon drawing
-        else if (m_canvas->getToolMode() == ToolMode::Polygon || m_canvas->getToolMode() == ToolMode::Arc){
+        else if (m_canvas->getToolMode() == ToolMode::Polygon){
             QAction *action_keep = contextMenu.addAction("Done");
             connect(action_keep, &QAction::triggered, this, [this]() {m_canvas->restoreShape();});
         }
