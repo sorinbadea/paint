@@ -35,6 +35,11 @@ enum DrawingMode : uint8_t {
     Final
 };
 
+enum class ToolType : uint8_t {
+    Pen,
+    Brush
+};
+
 typedef struct {
     ShapeType type;
     std::optional<QPointF> start;
@@ -87,6 +92,7 @@ public:
     virtual QPolygonF getPoints() = 0;
 
     virtual void setShapeData(const ShapeData_t& shape_data) = 0;
+    virtual void setColor(const ToolType& tool, const QColor color) = 0;
     virtual void addPoint(const QPointF& p) = 0;
 
     // for selecting and moving a shape
@@ -122,6 +128,7 @@ public:
     HandlePosition hookTest(const QPointF& pt) const override;
     // getter setters
     void setShapeData(const ShapeData_t& shape_data) override;
+    void setColor(const ToolType& tool, const QColor color) override;
     QPolygonF getPoints() override;
     void addPoint(const QPointF& p) override;
     void moveRelative(const QPointF &delta) override;
@@ -148,6 +155,7 @@ public:
     HandlePosition hookTest(const QPointF& pt) const override;
     bool contains(const QPointF &point) const override;
     void setShapeData(const ShapeData_t& shape_data) override;
+    void setColor(const ToolType& tool, const QColor color) override;
     QPolygonF getPoints() override;
     void addPoint(const QPointF& p) override;
     void resizeShape(const QPointF &delta, const HandlePosition hp) override;
@@ -176,6 +184,7 @@ public:
     HandlePosition hookTest(const QPointF& pt) const override;
     bool contains(const QPointF &point) const override;
     void setShapeData(const ShapeData_t& shape_data) override;
+    void setColor(const ToolType& tool, const QColor color) override;
     void addPoint(const QPointF& p) override;
     QPolygonF getPoints() override;
     void moveRelative(const QPointF &delta) override;
@@ -203,6 +212,7 @@ public:
     HandlePosition hookTest(const QPointF& pt) const override;
     bool contains(const QPointF &point) const override;
     void setShapeData(const ShapeData_t& shape_data) override;
+    void setColor(const ToolType& tool, const QColor color) override;
     void addPoint(const QPointF& p) override;
     QPolygonF getPoints() override;
     void moveRelative(const QPointF &delta) override;
@@ -229,6 +239,7 @@ public:
     HandlePosition hookTest(const QPointF& pt) const override;
     bool contains(const QPointF &point) const override;
     void setShapeData(const ShapeData_t& shape_data) override;
+    void setColor(const ToolType& tool, const QColor color) override;
     void addPoint(const QPointF& p) override;
     QPolygonF getPoints() override;
     void moveRelative(const QPointF &delta) override;

@@ -81,6 +81,10 @@ void LineShape::setShapeData(const ShapeData_t& shape_data) {
     m_line.setP1(shape_data.end.value());
 }
 
+void LineShape::setColor(const ToolType& tool, const QColor color) {
+    m_pen.setColor(color);
+}
+
 void LineShape::moveRelative(const QPointF &delta) {
     m_line.setP1(m_line.p1() + delta);
     m_line.setP2(m_line.p2() + delta);
@@ -196,6 +200,13 @@ void RectangleShape::setShapeData(const ShapeData_t& shape_data) {
     m_rectangle.setTopLeft(shape_data.start.value());
     m_rectangle.setBottomRight(shape_data.end.value());
     m_rectangle = m_rectangle.normalized();
+}
+
+void RectangleShape::setColor(const ToolType& tool, const QColor color) {
+    if (tool == ToolType::Pen)
+        m_pen.setColor(color);
+    else if (tool == ToolType::Brush)
+        m_brush.setColor(color);
 }
 
 void RectangleShape::moveRelative(const QPointF &delta) {
@@ -397,6 +408,13 @@ void CircleShape::setShapeData(const ShapeData_t& shape_data) {
     m_radius_y = m_radius_x;
 }
 
+void CircleShape::setColor(const ToolType& tool, const QColor color) {
+    if (tool == ToolType::Pen)
+        m_pen.setColor(color);
+    else if (tool == ToolType::Brush)
+        m_brush.setColor(color);
+}
+
 void CircleShape::moveRelative(const QPointF &delta) {
     m_center = m_center + delta;
 }
@@ -558,10 +576,8 @@ void PolygonShape::deserialize(QDataStream &in) {
     in >> m_points >> m_pen >> m_brush;
 }
 
-bool PolygonShape::contains(const QPointF &point) const{
-    QRectF frameRect = m_points.boundingRect();
-    return frameRect.contains(point) 
-        || m_points.containsPoint(point, Qt::OddEvenFill);
+bool PolygonShape::contains(const QPointF &point) const {
+    return m_points.containsPoint(point, Qt::OddEvenFill);
 }
 
 void PolygonShape::addPoint(const QPointF& qpoint) {
@@ -573,6 +589,13 @@ QPolygonF PolygonShape::getPoints() {
 }
 
 void PolygonShape::setShapeData(const ShapeData_t& shape_data) {
+}
+
+void PolygonShape::setColor(const ToolType& tool, const QColor color) {
+    if (tool == ToolType::Pen)
+        m_pen.setColor(color);
+    else if (tool == ToolType::Brush)
+        m_brush.setColor(color);
 }
 
 void PolygonShape::moveRelative(const QPointF &delta) {
@@ -938,6 +961,10 @@ QPolygonF ArcShape::getPoints() {
 }
 
 void ArcShape::setShapeData(const ShapeData_t& shape_data) {
+}
+
+void ArcShape::setColor(const ToolType& tool, const QColor color) { 
+    m_pen.setColor(color);
 }
 
 void ArcShape::moveRelative(const QPointF &delta) {

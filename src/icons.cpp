@@ -7,7 +7,7 @@ QIcon createLineIcon(unsigned size) {
 
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(Qt::red, 3, Qt::SolidLine, Qt::RoundCap));
+    painter.setPen(QPen(Qt::red, 2.5, Qt::SolidLine, Qt::RoundCap));
     // Draw diagonal line
     painter.drawLine(3, size - 10, size - 10, 3);
     return QIcon(pixmap);
@@ -19,7 +19,7 @@ QIcon createCircleIcon(unsigned size) {
     pixmap.fill(Qt::transparent);
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(Qt::red, 3, Qt::SolidLine, Qt::RoundCap));
+    painter.setPen(QPen(Qt::red, 2.5, Qt::SolidLine, Qt::RoundCap));
     painter.setBrush(Qt::NoBrush);
     // Draw circle in center
     painter.drawEllipse(5, 5, size - 10, size - 10);
@@ -33,11 +33,35 @@ QIcon createRectangleIcon(unsigned size) {
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing, false);
     // 3. Define pen (3px outline) and no brush
-    painter.setPen(QPen(Qt::red, 2));
+    painter.setPen(QPen(Qt::red, 2.5));
     painter.setBrush(Qt::NoBrush);
     painter.drawRect(5, 5, size - 10, size -10);
     painter.end();
     // 5. Wrap the QPixmap into a QIcon
+    return QIcon(pixmap);
+}
+
+QIcon createPolygonIcon() {
+    QPixmap pixmap(ICON_SIZE, ICON_SIZE);
+    pixmap.fill(Qt::transparent);
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    // 2. Define the 5 vertices of the polygon for 32x32 bounds
+    QPolygonF polygon;
+    polygon << QPointF(16.0, 3.5)   // Top point
+            << QPointF(28.0, 11.5)  // Top-right
+            << QPointF(23.0, 27.5)  // Bottom-right
+            << QPointF(9.0, 27.5)   // Bottom-left
+            << QPointF(4.0, 11.5);   // Top-left
+
+    painter.setPen(QPen(Qt::red, 2.5));
+    painter.setBrush(Qt::NoBrush);
+    
+    // Draws both fill and border outline
+    painter.drawPolygon(polygon);
+    painter.end();
     return QIcon(pixmap);
 }
 
@@ -189,30 +213,6 @@ QIcon createBrushIcon(const QColor &fillColor) {
     painter.end();
 
     // 2. Wrap and return as QIcon
-    return QIcon(pixmap);
-}
-
-QIcon createPolygonIcon() {
-    QPixmap pixmap(ICON_SIZE, ICON_SIZE);
-    pixmap.fill(Qt::transparent);
-
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing, true);
-
-    // 2. Define the 5 vertices of the polygon for 32x32 bounds
-    QPolygonF polygon;
-    polygon << QPointF(16.0, 3.5)   // Top point
-            << QPointF(28.0, 11.5)  // Top-right
-            << QPointF(23.0, 27.5)  // Bottom-right
-            << QPointF(9.0, 27.5)   // Bottom-left
-            << QPointF(4.0, 11.5);   // Top-left
-
-    painter.setPen(QPen(Qt::red, 2));
-    painter.setBrush(Qt::NoBrush);
-    
-    // Draws both fill and border outline
-    painter.drawPolygon(polygon);
-    painter.end();
     return QIcon(pixmap);
 }
 

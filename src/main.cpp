@@ -83,6 +83,18 @@ QAction* penWidthPickMenu(QToolBar* toolbar,
 
             QAction *action_remove = contextMenu.addAction("Delete");
             connect(action_remove, &QAction::triggered, this, [this]() {m_canvas->removeShape();});
+
+            QAction* brushColorAction = colorPick(&contextMenu, "Brush Color", createPencilIcon, Qt::white, [this](const QColor& c) {
+                m_canvas->setBrushColor(c);
+            });
+            // Add action to context menu
+            contextMenu.addAction(brushColorAction);
+
+            QAction* penColorAction = colorPick(&contextMenu, "Pen Color", createPencilIcon, Qt::white, [this](const QColor& c) {
+                m_canvas->setPaintColor(c);
+            });
+            // Add action to context menu
+            contextMenu.addAction(penColorAction);
         }
         else if (m_canvas->isGrouping()) {
             QAction *action_zoom_in = contextMenu.addAction("Zoom In");
@@ -115,15 +127,16 @@ QAction* penWidthPickMenu(QToolBar* toolbar,
 
         return QIcon(pixmap);
     }
+
     void addPenMenuToEdit(QMenu *editMenu) {
         // "Pen Width" sub-menu inside Edit
         QMenu *penSubMenu = editMenu->addMenu("&Pen Width");
         // Sample width values
-        const QVector<int> widths = {1, 2, 3, 5, 8, 12};
+        const std::vector<int> widths = {1, 2, 3, 5, 8, 12};
         // Standard QAction list with visual icons ---
         auto *actionGroup = new QActionGroup(penSubMenu);
         actionGroup->setExclusive(true);
-        for (int w : widths) {
+        for (const auto& w : widths) {
             QString text = QString("%1 px").arg(w);
             QAction *widthAction = penSubMenu->addAction(createPenWidthIcon(w), text);
             widthAction->setCheckable(true);
@@ -153,6 +166,27 @@ QAction* penWidthPickMenu(QToolBar* toolbar,
                 onColorChanged(chosen); // Execute callback with new color!
             }
         });
+        return colorAction;
+    }
+
+    QAction* colorPick(QWidget* parent, 
+                   const char *text, 
+                   const std::function<QIcon(QColor)>& icon_creator,
+                   QColor initialColor, 
+                   std::function<void(const QColor&)> onColorChanged) {
+        QAction* colorAction = new QAction(QObject::tr(text), parent);
+        colorAction->setIcon(icon_creator(initialColor));
+
+        // Connect trigger signal
+        QObject::connect(colorAction, &QAction::triggered, parent, [parent, icon_creator, colorAction, initialColor, onColorChanged]() mutable {
+            QColor chosen = QColorDialog::getColor(initialColor, parent, QObject::tr("Select Color"));
+            if (chosen.isValid()) {
+                initialColor = chosen;
+                colorAction->setIcon(icon_creator(chosen));
+                onColorChanged(chosen); // Execute callback (e.g. update shape or canvas)
+            }
+        });
+
         return colorAction;
     }
 

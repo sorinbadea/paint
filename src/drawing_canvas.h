@@ -20,15 +20,8 @@ constexpr bool w_hooks = true;
 // -------------------------------------------------------------
 // 3. CANVAS WIDGET
 // -------------------------------------------------------------
-enum class ToolMode { Line, 
-                    Circle, 
-                    Rectangle,
-                    Polygon,
-                    Arc,
-                    Select,
-                    Group,
-                    None
-                };
+enum class ToolMode { Line, Circle,  Rectangle, Polygon, Arc, Select, Group, None};
+
 constexpr ShapeType getShapeType(ToolMode tm) noexcept;
 
 class DrawingCanvas : public QWidget {

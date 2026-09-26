@@ -46,12 +46,18 @@ void DrawingCanvas::setPenWidth(int width) {
     m_pen_width = width;
 }
 
-void DrawingCanvas::setBrushColor(const QColor& brush) {
-    m_brush_color = brush;
+void DrawingCanvas::setBrushColor(const QColor& color) {
+    m_brush_color = color;
+    if(m_selected_shape)
+        // called when a shape is selected
+        m_selected_shape->setColor(ToolType::Brush, color);
 }
 
 void DrawingCanvas::setPaintColor(const QColor& color) {
    m_drawing_color = color;
+   if (m_selected_shape)
+        // called when a shape is selected
+        m_selected_shape->setColor(ToolType::Pen, color);
 }
 
 void DrawingCanvas::undoLast() {
@@ -277,8 +283,6 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
             m_current_pos = event->position();
         }
         else if (m_mode == ToolMode::Select) {
-            if (m_shapes.size() == 0)
-                return;
             // Select mode
             //------------
             if (m_selected_shape) {
