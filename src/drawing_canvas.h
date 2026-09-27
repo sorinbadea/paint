@@ -1,6 +1,7 @@
 #ifndef DRAWINGCANVAS_H
 #define DRAWINGCANVAS_H
 #include "shapes.h"
+#include <QApplication>
 #include <QToolTip>
 #include <QWidget>
 #include <QMouseEvent>
@@ -39,6 +40,7 @@ public:
     void setPenWidth(int width);
     void setPaintColor(const QColor& color);
     void setBrushColor(const QColor& brush);
+    void setTransparentBrush();
     void setShapeZoomFactor(const qreal& zoom_factor);
     void setGroupZoomFactor(const qreal& zoom_factor);
     // getters
@@ -75,6 +77,9 @@ private:
     // check if a Shape is below the cursor
     Shape* getSelectedShape(const QPointF& point);
 
+    // implement drawing mode
+    void drawingMode(const QMouseEvent *event);
+
     // Attributes
     // drawing mode, Circle, Line, Selection..
     ToolMode m_mode;
@@ -93,6 +98,9 @@ private:
         The shapes beeing grouped
     */
     std::list<Shape*> m_group_shapes;
+
+    // store the position in the list of shapes of the selected shape
+    std::list<std::unique_ptr<Shape>>::iterator m_select_shape_it;
 
     // list of existing shapes, used when paintEvent is called
     std::list<std::unique_ptr<Shape>> m_shapes;

@@ -11,6 +11,7 @@ constexpr double EPSILON = 1.0; // Tolerance for point-on-line checks
 constexpr qreal handle_size = 8.0;
 constexpr qreal hit_padding = 4.0;
 constexpr qreal min_radius = 4.0;
+constexpr qreal tollerance_radius = 6.0;
 
 enum class ShapeType : uint8_t {
     Line = 1,
@@ -27,6 +28,8 @@ enum HandlePosition : uint8_t {
     BottomCenter,
     LeftCenter,
     RightCenter,
+    StartPoint,
+    EndPoint,
     Inside
 };
 

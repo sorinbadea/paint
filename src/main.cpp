@@ -70,7 +70,13 @@ QAction* penWidthPickMenu(QToolBar* toolbar,
             Context menu popping-up on mouse right click
         */
         QMenu contextMenu(tr("Context Menu"), this);
-        if (m_canvas->isShapeSelected()) {
+        QFont font = contextMenu.font();
+        font.setPointSize(13);
+        contextMenu.setFont(font);
+    
+        Shape* shape = m_canvas->isShapeSelected();
+
+        if (shape != nullptr) {
             // the sape is selected
             QAction *copy_action = contextMenu.addAction("Clone");
             connect(copy_action, &QAction::triggered, this, [this]() {m_canvas->cloneShape();});
@@ -84,17 +90,28 @@ QAction* penWidthPickMenu(QToolBar* toolbar,
             QAction *action_remove = contextMenu.addAction("Delete");
             connect(action_remove, &QAction::triggered, this, [this]() {m_canvas->removeShape();});
 
-            QAction* brushColorAction = colorPick(&contextMenu, "Brush Color", createPencilIcon, Qt::white, [this](const QColor& c) {
-                m_canvas->setBrushColor(c);
-            });
-            // Add action to context menu
-            contextMenu.addAction(brushColorAction);
+            contextMenu.addSeparator();
 
             QAction* penColorAction = colorPick(&contextMenu, "Pen Color", createPencilIcon, Qt::white, [this](const QColor& c) {
                 m_canvas->setPaintColor(c);
             });
             // Add action to context menu
             contextMenu.addAction(penColorAction);
+
+            if (shape->type() == ShapeType::Circle
+                || shape->type() == ShapeType::Rectangle
+                || shape->type() == ShapeType::Polygon) {
+                // only for thos shapes makes sens to fill them
+                QAction* brushColorAction = colorPick(&contextMenu, "Brush Color", createPencilIcon, Qt::white, [this](const QColor& c) {
+                    m_canvas->setBrushColor(c);
+                });
+                // Add action to context menu
+                contextMenu.addAction(brushColorAction);
+
+                QAction* transparentBrushAction = contextMenu.addAction("Transparent");               
+                // Add action to context menu
+                connect(transparentBrushAction, &QAction::triggered, this, [this]() {m_canvas->setTransparentBrush();});
+            }
         }
         else if (m_canvas->isGrouping()) {
             QAction *action_zoom_in = contextMenu.addAction("Zoom In");
@@ -132,7 +149,7 @@ QAction* penWidthPickMenu(QToolBar* toolbar,
         // "Pen Width" sub-menu inside Edit
         QMenu *penSubMenu = editMenu->addMenu("&Pen Width");
         // Sample width values
-        const std::vector<int> widths = {1, 2, 3, 5, 8, 12};
+        const std::vector<int> widths = {1, 2, 3, 4, 5, 7, 9, 11, 12};
         // Standard QAction list with visual icons ---
         auto *actionGroup = new QActionGroup(penSubMenu);
         actionGroup->setExclusive(true);

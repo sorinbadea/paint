@@ -37,6 +37,12 @@ void LineShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
 void LineShape::drawSelect(QPainter &painter, const bool draw_hooks) const {
     painter.setPen(m_shape_select_pencil);
     painter.drawLine(m_line);
+    if(draw_hooks) {
+        painter.setPen(m_hook_pen);
+        painter.setBrush(m_hook_brush);
+        painter.drawEllipse(m_line.p1(), 5, 5);
+        painter.drawEllipse(m_line.p2(), 5, 5);
+    }
 }
 
 std::unique_ptr<Shape> LineShape::clone() const {
@@ -91,6 +97,23 @@ void LineShape::moveRelative(const QPointF &delta) {
 }
 
 void LineShape::resizeShape(const QPointF &delta, const HandlePosition hp) {
+    switch (hp) {
+        case HandlePosition::StartPoint: {
+            // Move p1 while keeping p2 fixed
+            QPointF newP1 = m_line.p1() + delta;
+            m_line.setP1(newP1);
+            break;
+        }
+        case HandlePosition::EndPoint: {
+            // Move p2 while keeping p1 fixed
+            QPointF newP2 = m_line.p2() + delta;
+            m_line.setP2(newP2);
+            break;
+        }
+        default:
+            qDebug() << "unknown handle position, weird..";
+            break;
+    }
 }
 
 void LineShape::zoomInOut(const qreal& factor) {
@@ -108,7 +131,23 @@ void LineShape::toolHint(const QPoint &point, const QString& explanation) {
 }
 
 HandlePosition LineShape::hookTest(const QPointF& pt) const {
-    return None;
+    // AI generated and adapted
+    qreal maxDistanceSquared = tollerance_radius * tollerance_radius;
+    // Helper lambda for squared distance calculation
+    auto distanceSquared = [](const QPointF& p1, const QPointF& p2) -> qreal {
+        qreal dx = p1.x() - p2.x();
+        qreal dy = p1.y() - p2.y();
+        return dx * dx + dy * dy;
+    };
+    // Check start point p1()
+    if (distanceSquared(pt, m_line.p1()) <= maxDistanceSquared) {
+        return HandlePosition::StartPoint;
+    }
+    // Check end point p2()
+    if (distanceSquared(pt, m_line.p2()) <= maxDistanceSquared) {
+        return HandlePosition::EndPoint;
+    }
+    return HandlePosition::None;
 }
 
 // ========================== RECTANGLE SHAPE ==========================
@@ -205,8 +244,14 @@ void RectangleShape::setShapeData(const ShapeData_t& shape_data) {
 void RectangleShape::setColor(const ToolType& tool, const QColor color) {
     if (tool == ToolType::Pen)
         m_pen.setColor(color);
-    else if (tool == ToolType::Brush)
-        m_brush.setColor(color);
+    else if (tool == ToolType::Brush) {
+        if (color != Qt::NoBrush)
+            m_brush.setColor(color);
+        else {
+            m_brush.setColor(Qt::transparent);
+            m_brush.setStyle(Qt::SolidPattern);
+        }
+    }
 }
 
 void RectangleShape::moveRelative(const QPointF &delta) {
@@ -411,8 +456,14 @@ void CircleShape::setShapeData(const ShapeData_t& shape_data) {
 void CircleShape::setColor(const ToolType& tool, const QColor color) {
     if (tool == ToolType::Pen)
         m_pen.setColor(color);
-    else if (tool == ToolType::Brush)
-        m_brush.setColor(color);
+    else if (tool == ToolType::Brush) {
+        if (color != Qt::NoBrush)
+            m_brush.setColor(color);
+        else {
+            m_brush.setColor(Qt::transparent);
+            m_brush.setStyle(Qt::SolidPattern);
+        }
+    }
 }
 
 void CircleShape::moveRelative(const QPointF &delta) {
@@ -594,8 +645,14 @@ void PolygonShape::setShapeData(const ShapeData_t& shape_data) {
 void PolygonShape::setColor(const ToolType& tool, const QColor color) {
     if (tool == ToolType::Pen)
         m_pen.setColor(color);
-    else if (tool == ToolType::Brush)
-        m_brush.setColor(color);
+    else if (tool == ToolType::Brush) {
+        if (color != Qt::NoBrush)
+            m_brush.setColor(color);
+        else {
+            m_brush.setColor(Qt::transparent);
+            m_brush.setStyle(Qt::SolidPattern);
+        }
+    }
 }
 
 void PolygonShape::moveRelative(const QPointF &delta) {
