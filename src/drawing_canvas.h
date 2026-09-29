@@ -80,6 +80,9 @@ private:
     // implement drawing mode
     void drawingMode(const QMouseEvent *event);
 
+    // console log
+    void logging(const std::string& message);
+
     // Attributes
     // drawing mode, Circle, Line, Selection..
     ToolMode m_mode;

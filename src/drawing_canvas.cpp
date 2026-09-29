@@ -131,15 +131,10 @@ void DrawingCanvas::finalizeShape(std::optional<QPointF> const&  point) {
        - add the shape to existing shapes
        - handle the grouping case
     */
-
-    qDebug() << "finalize shape, drawing " << m_isDrawing << " grouping " << m_grouping <<
-        (m_shape == nullptr ? " shape not defined " : " shape defined ");
-
+    logging(std::move(std::string{"finalize shape"}));
     assert(m_shape);
     // reset drawing flag
     m_isDrawing = false;
-
-    qDebug() << "grouping done ? "<< m_grouping;
 
     if (m_grouping) {
         // build the rectangle to group several shapes
@@ -290,9 +285,7 @@ void DrawingCanvas::paintEvent(QPaintEvent *) {
 
 void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
 
-    qDebug() << "Mouse press event m_drawing " << m_isDrawing << " grouping " << m_grouping <<
-        (m_shape == nullptr ? " shape not defined " : " shape defined ");
-
+    logging(std::move(std::string{"Mouse press event"}));
     if (event->button() == Qt::LeftButton) {
         if (m_group_shapes.size() > 0) {
             // grouping shapes case
@@ -339,9 +332,7 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
 
 void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
 
-    qDebug() << "Mouse press event m_drawing " << m_isDrawing << " grouping " << m_grouping <<
-        (m_shape == nullptr ? " shape not defined " : " shape defined ");
-
+    logging(std::move(std::string{"Mouse move event"}));
     if (m_isDrawing) {
         // Drawing mode
         // return if no new shape
@@ -404,9 +395,7 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
 
 void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
 
-    qDebug() << "Mouse press event m_drawing " << m_isDrawing << " grouping " << m_grouping <<
-        (m_shape == nullptr ? " shape not defined " : " shape defined ");
-
+    logging(std::move(std::string{"Mouse release event"}));
     if (event->button() == Qt::LeftButton) {
         // one shape is selected
         if (m_selected_shape != nullptr) {
@@ -636,4 +625,10 @@ bool DrawingCanvas::hookSelected(const HandlePosition handle) const {
             handle == HandlePosition::LeftCenter ||
             handle == HandlePosition::StartPoint ||
             handle == HandlePosition::EndPoint);
+}
+
+void DrawingCanvas::logging(const std::string& message) {
+    qDebug() << message << "- drawing " << m_isDrawing << "- grouping " << m_grouping <<
+        (m_shape == nullptr ? "shape not defined" : "shape defined") << " - " <<
+        (m_selected_shape != nullptr ? "shape selected" : "shape not selected ");
 }
