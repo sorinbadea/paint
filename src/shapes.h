@@ -2,6 +2,7 @@
 #define SHAPES_H
 
 #include <iostream>
+#include <QApplication>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPen>

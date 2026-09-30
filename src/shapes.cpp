@@ -807,7 +807,7 @@ void ArcShape::drawArc(QPainter &painter, const QPen& pencil, DrawingMode dm) co
     QPointF normal(-dir.y(), dir.x()); // 90 degree CCW rotation
     // Apex point of the arc
     QPointF pMid = chordMid + normal * h;
-    // Circle Radius: R = h/2 + d^2 / (8*h)
+
     double R = (h / 2.0) + (d * d) / (8.0 * h); // Equals 0.625 * d
     // Center of Circle (offset from chord midpoint along normal)
     QPointF center = chordMid + normal * (h - R);
@@ -875,7 +875,6 @@ void ArcShape::deserialize(QDataStream &in) {
 }
 
 bool ArcShape::contains(const QPointF &pt) const {
-    // AI generated code !
     double tolerance = 6.0;
     QLineF chordLine(m_startPoint, m_endPoint);
     double d = chordLine.length();
@@ -1030,7 +1029,12 @@ void ArcShape::moveRelative(const QPointF &delta) {
 }
 
 void ArcShape::resizeShape(const QPointF &delta, const HandlePosition hp) {
-    // AI generated and adapted code
+    if (hp == HandlePosition::StartPoint)
+        m_startPoint += delta;
+    else if (hp == HandlePosition::EndPoint)
+        m_endPoint += delta;
+    else
+        qDebug() << __FUNCTION__ << " Unknown handle..";
 }
 
 void ArcShape::zoomInOut(const qreal& factor) {
@@ -1046,38 +1050,27 @@ void ArcShape::toolHint(const QPoint &point, const QString& explanation) {
     QToolTip::showText(point + QPoint(10, 10), explanation, nullptr, QRect(), 2000);
 }
 
-HandlePosition ArcShape::hookTest(const QPointF& pt) const {
+HandlePosition ArcShape::hookTest(const QPointF& clickPos) const {
     // AI generated and adapted code
-    /*
-    if (m_points.isEmpty()) 
-        return HandlePosition::None;
-
-    QRectF frameRect = m_points.boundingRect();
-    const QPointF topCenter(frameRect.center().x(), frameRect.top());
-    const QPointF rightCenter(frameRect.right(), frameRect.center().y());
-    const QPointF bottomCenter(frameRect.center().x(), frameRect.bottom());
-    const QPointF leftCenter(frameRect.left(), frameRect.center().y());
-
-    // Optional padding (in pixels) to make small handles easier to hit/click
-    const qreal total_size = handle_size + (hit_padding * 2.0);
-    auto makeHitRect = [total_size](const QPointF& center) {
-        return QRectF(
-            center.x() - total_size / 2.0,
-            center.y() - total_size / 2.0,
-            total_size,
-            total_size
-        );
+    qreal tollerance = QApplication::startDragDistance() * 1.5;
+    qreal maxDistSquared = tollerance * tollerance;
+    // Helper lambda for squared distance: dx^2 + dy^2
+    auto distSquared = [](const QPointF& a, const QPointF& b) -> qreal {
+        qreal dx = a.x() - b.x();
+        qreal dy = a.y() - b.y();
+        return dx * dx + dy * dy;
     };
-
-    if (makeHitRect(topCenter).contains(pt))
-        return HandlePosition::TopCenter;
-    else if (makeHitRect(rightCenter).contains(pt))
-        return HandlePosition::RightCenter;
-    else if (makeHitRect(bottomCenter).contains(pt))
-        return HandlePosition::BottomCenter;
-    else if (makeHitRect(leftCenter).contains(pt))
-        return HandlePosition::LeftCenter;
-    else
-        return HandlePosition::None; */
+    // Check StartPoint (p1)
+    if (distSquared(clickPos, m_startPoint) <= maxDistSquared) {
+        return HandlePosition::StartPoint;
+    }
+    // Check EndPoint (p2)
+    if (distSquared(clickPos, m_endPoint) <= maxDistSquared) {
+        return HandlePosition::EndPoint;
+    }
+    // Optional: Check Apex / Mid-height point (pHeight)
+    //if (distSquared(clickPos, m_Apex) <= maxDistSquared) {
+    //    return HandlePosition::ApexPoint;
+    //}
    return HandlePosition::None;
 }
