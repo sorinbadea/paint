@@ -45,6 +45,13 @@ enum class ToolType : uint8_t {
 };
 
 typedef struct {
+    std::optional<QColor> line_color;
+    std::optional<QColor> brush_color;
+    std::optional<Qt::PenStyle> pen_style;
+    std::optional<int> pen_width;
+} drawing_properties_t;
+
+typedef struct {
     ShapeType type;
     std::optional<QPointF> start;
     std::optional<QPointF> end;

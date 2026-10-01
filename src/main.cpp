@@ -23,46 +23,57 @@ public:
     }
 
 private:
-QAction* penWidthPickMenu(QToolBar* toolbar, 
+    QAction* penWidthPickMenu(QToolBar* toolbar, 
                           const char* text, 
                           const std::function<QIcon(int)>& icon_creator,
                           int initialWidth, 
                           std::function<void(int)> onWidthChanged) {
-        QAction* widthAction = new QAction(tr(text), toolbar);
-        if (icon_creator) {
-            widthAction->setIcon(icon_creator(initialWidth));
-        }
+        QAction* penWidthAction = new QAction(QObject::tr(text), toolbar);
+
+        // Use custom icon creator if provided, otherwise generate sample line preview
+        auto getIcon = [icon_creator](int w) -> QIcon {
+            return icon_creator ? icon_creator(w) : createLinePreviewIcon(w);
+        };
+        penWidthAction->setIcon(getIcon(initialWidth));
         QMenu* menu = new QMenu(toolbar);
-        const std::vector<int> presetWidths = {1, 2, 3, 5, 8, 12, 16};
+        menu->setStyleSheet(
+            "QMenu::icon {"
+            "    width: 48px;"
+            "    height: 20px;"
+            "}"
+            "QMenu::item {"
+            "    padding: 6px 20px 6px 10px;"
+            "}"
+        );
+
         // Helper lambda to update state and trigger callback
-        auto applyWidth = [icon_creator, widthAction, onWidthChanged](int newWidth) {
-            if (icon_creator) {
-                widthAction->setIcon(icon_creator(newWidth));
-            }
+        auto applyWidth = [getIcon, penWidthAction, onWidthChanged](int newWidth) {
+            penWidthAction->setIcon(getIcon(newWidth));
             if (onWidthChanged) {
                 onWidthChanged(newWidth);
             }
         };
-
-        // Populate preset menu actions
-        for (int w : presetWidths) {
-                QString itemText = QString("%1 px").arg(w);
-                QAction* itemAction = menu->addAction(itemText);
-                if (icon_creator) {
-                    itemAction->setIcon(icon_creator(w));
-                }
-                QObject::connect(itemAction, &QAction::triggered, toolbar, [applyWidth, w]() {
-                    applyWidth(w);
-                });
+        // Populate preset menu actions with icons
+        for (int w : preset_widths) {
+            QString itemText = QString("%1 px").arg(w);
+            QIcon widthIcon = createPenWidthIcon(w, QSize(48, 20));
+            QAction* itemAction = menu->addAction(widthIcon, itemText);
+            // Attach the preview icon
+            itemAction->setIcon(getIcon(w));
+            itemAction->setIconVisibleInMenu(true);
+            QObject::connect(itemAction, &QAction::triggered, toolbar, [applyWidth, w]() {
+                applyWidth(w);
+            });
         }
         // Attach menu to toolbar button
-        widthAction->setMenu(menu);
-        toolbar->addAction(widthAction);
-        // Ensure the toolbar button displays a drop-down menu indicator
-        if (QToolButton* btn = qobject_cast<QToolButton*>(toolbar->widgetForAction(widthAction))) {
+        penWidthAction->setMenu(menu);
+        toolbar->addAction(penWidthAction);
+        // Configure the toolbar button
+        if (QToolButton* btn = qobject_cast<QToolButton*>(toolbar->widgetForAction(penWidthAction))) {
             btn->setPopupMode(QToolButton::InstantPopup);
+            btn->setIconSize(QSize(48, 20)); // Ensure the toolbar button displays the wide icon
         }
-        return widthAction;
+        return penWidthAction;
     }
 
     void showContextMenu(const QPoint &pos) {
@@ -93,24 +104,35 @@ QAction* penWidthPickMenu(QToolBar* toolbar,
             contextMenu.addSeparator();
 
             QAction* penColorAction = colorPick(&contextMenu, "Pen Color", createPencilIcon, Qt::white, [this](const QColor& c) {
-                m_canvas->setPaintColor(c);
+                drawing_properties_t data;
+                data.line_color = c;
+                m_canvas->setDrawingProperties(data);
             });
             // Add action to context menu
             contextMenu.addAction(penColorAction);
+
+            // add a sub-menu for different line styles
+            connectSubmenu(contextMenu, font);
 
             if (shape->type() == ShapeType::Circle
                 || shape->type() == ShapeType::Rectangle
                 || shape->type() == ShapeType::Polygon) {
                 // only for thos shapes makes sens to fill them
                 QAction* brushColorAction = colorPick(&contextMenu, "Brush Color", createPencilIcon, Qt::white, [this](const QColor& c) {
-                    m_canvas->setBrushColor(c);
+                    drawing_properties_t data;
+                    data.brush_color = c;
+                    m_canvas->setDrawingProperties(data);
                 });
                 // Add action to context menu
                 contextMenu.addAction(brushColorAction);
 
                 QAction* transparentBrushAction = contextMenu.addAction("Transparent");               
                 // Add action to context menu
-                connect(transparentBrushAction, &QAction::triggered, this, [this]() {m_canvas->setTransparentBrush();});
+                connect(transparentBrushAction, &QAction::triggered, this, [this]() {
+                    drawing_properties_t data;
+                    data.brush_color = Qt::NoBrush;
+                    m_canvas->setDrawingProperties(data);
+                });
             }
         }
         else if (m_canvas->isGrouping()) {
@@ -131,80 +153,101 @@ QAction* penWidthPickMenu(QToolBar* toolbar,
         contextMenu.exec(this->mapToGlobal(pos));
     }
 
-    QIcon createPenWidthIcon(int width) {
-        QPixmap pixmap(40, 16);
-        pixmap.fill(Qt::transparent);
-
-        QPainter painter(&pixmap);
-        painter.setRenderHint(QPainter::Antialiasing, true);
-        
-        QPen pen(Qt::black, width, Qt::SolidLine, Qt::RoundCap);
-        painter.setPen(pen);
-        painter.drawLine(2, 8, 38, 8); // Draw stroke preview
-
-        return QIcon(pixmap);
-    }
-
     void addPenMenuToEdit(QMenu *editMenu) {
-        // "Pen Width" sub-menu inside Edit
-        QMenu *penSubMenu = editMenu->addMenu("&Pen Width");
-        // Sample width values
-        const std::vector<int> widths = {1, 2, 3, 4, 5, 7, 9, 11, 12};
-        // Standard QAction list with visual icons ---
+        QMenu *penSubMenu = editMenu->addMenu(tr("&Pen Width"));
+
+        // Set QSS on penSubMenu to prevent icons from being clipped/squished
+        penSubMenu->setStyleSheet(
+            "QMenu::icon {"
+            "    width: 48px;"
+            "    height: 20px;"
+            "}"
+            "QMenu::item {"
+            "    padding: 6px 20px 6px 10px;"
+            "}"
+        );
         auto *actionGroup = new QActionGroup(penSubMenu);
         actionGroup->setExclusive(true);
-        for (const auto& w : widths) {
+
+        for (const auto& w : preset_widths) {
             QString text = QString("%1 px").arg(w);
-            QAction *widthAction = penSubMenu->addAction(createPenWidthIcon(w), text);
-            widthAction->setCheckable(true);
-            widthAction->setData(w); // Store numeric pixel width in action data
-            actionGroup->addAction(widthAction);
+            // Generate line width preview icon
+            QIcon widthIcon = createPenWidthIcon(w, QSize(48, 20));
+            QAction *penWidthAction = penSubMenu->addAction(widthIcon, text);
+            
+            // Force icon visibility on macOS
+            penWidthAction->setIconVisibleInMenu(true);
+            penWidthAction->setCheckable(true);
+            penWidthAction->setData(w); // Store numeric pixel width in action data
+            actionGroup->addAction(penWidthAction);
             // Default to 2px checked
             if (w == 2) {
-                widthAction->setChecked(true);
+                penWidthAction->setChecked(true);
             }
             // Trigger width change on click
-            connect(widthAction, &QAction::triggered, this, [this, w]() {
-                m_canvas->setPenWidth(w);
+            connect(penWidthAction, &QAction::triggered, this, [this, w]() {
+                drawing_properties_t data;
+                data.pen_width = w;
+                m_canvas->setDrawingProperties(data);
             });
         }
     }
-
-    QAction* colorPick(QToolBar* toolbar, const char *text, const std::function<QIcon(QColor)>& icon_creator,
-        QColor initialColor, std::function<void(const QColor&)> onColorChanged) {
-        QAction* colorAction = new QAction(tr(text), this);
-        colorAction->setIcon(icon_creator(initialColor));
-        toolbar->addAction(colorAction);
-        connect(colorAction, &QAction::triggered, this, [this, icon_creator, colorAction, initialColor, onColorChanged]() mutable {
-            QColor chosen = QColorDialog::getColor(initialColor, this, tr("Select Color"));
+    
+    QAction* colorPick(QWidget* parent, const char *text, const std::function<QIcon(QColor)>& icon_creator, QColor initialColor, std::function<void(const QColor&)> onColorChanged) {
+        // 1. Create the action using the passed parent
+        QAction* colorAction = new QAction(QObject::tr(text), parent);
+        if (icon_creator) {
+            colorAction->setIcon(icon_creator(initialColor));
+        }
+        if (QToolBar* toolbar = qobject_cast<QToolBar*>(parent)) {
+            toolbar->addAction(colorAction);
+        }
+        // Connect the trigger signal to open the color dialog
+        QObject::connect(colorAction, &QAction::triggered, parent, [parent, icon_creator, colorAction, initialColor, onColorChanged]() mutable {
+            QColor chosen = QColorDialog::getColor(initialColor, parent, QObject::tr("Select Color"));
             if (chosen.isValid()) {
-                initialColor = chosen;
-                colorAction->setIcon(icon_creator(chosen));
-                onColorChanged(chosen); // Execute callback with new color!
+                initialColor = chosen; // Update local state for next time the dialog opens
+                if (icon_creator) {
+                    colorAction->setIcon(icon_creator(chosen));
+                }
+                if (onColorChanged) {
+                    onColorChanged(chosen); // Execute callback
+                }
             }
         });
         return colorAction;
     }
 
-    QAction* colorPick(QWidget* parent, 
-                   const char *text, 
-                   const std::function<QIcon(QColor)>& icon_creator,
-                   QColor initialColor, 
-                   std::function<void(const QColor&)> onColorChanged) {
-        QAction* colorAction = new QAction(QObject::tr(text), parent);
-        colorAction->setIcon(icon_creator(initialColor));
-
-        // Connect trigger signal
-        QObject::connect(colorAction, &QAction::triggered, parent, [parent, icon_creator, colorAction, initialColor, onColorChanged]() mutable {
-            QColor chosen = QColorDialog::getColor(initialColor, parent, QObject::tr("Select Color"));
-            if (chosen.isValid()) {
-                initialColor = chosen;
-                colorAction->setIcon(icon_creator(chosen));
-                onColorChanged(chosen); // Execute callback (e.g. update shape or canvas)
-            }
-        });
-
-        return colorAction;
+    void connectSubmenu(QMenu& contextMenu, const QFont& font) {
+        //set-up the Pen Style sub menu
+        QMenu* subMenu = contextMenu.addMenu(tr("Pen Style"));
+        subMenu->setStyleSheet("QMenu::icon { width: 48px; height: 20px; }");
+        subMenu->setFont(font);
+        // Supported line types
+        const std::vector<Qt::PenStyle> styles = {
+            Qt::SolidLine,
+            Qt::DashLine,
+            Qt::DotLine,
+            Qt::DashDotLine,
+            Qt::DashDotDotLine
+        };
+        // Populate sub-menu with QLine previews
+        for (Qt::PenStyle style : styles) {
+            // Create an action with the human-readable text
+            QString label = penStyleToText(style);
+            QAction* act = subMenu->addAction(label);
+            // Attach the QLineF preview icon for this pen style
+            act->setIcon(createPenStylePreviewIcon(style, 3, QSize(48, 20), Qt::black));
+            // Mark currently active style as checked
+            act->setCheckable(true);
+            // act->setChecked(m_pen_style == style);
+            act->setIconVisibleInMenu(true);
+            // Handle selection
+            connect(act, &QAction::triggered, this, [this, style]() {
+                m_pen_style = style;
+                update(); // Repaint canvas with updated style
+            });
+        }
     }
 
     void createMenus() {
@@ -326,7 +369,7 @@ QAction* penWidthPickMenu(QToolBar* toolbar,
         connect(undoAction, &QAction::triggered, m_canvas.get(), &DrawingCanvas::undoLast);
         editMenu->addAction(undoAction);
 
-        // Add the undo menu
+        // Add the pen width menu
         addPenMenuToEdit(editMenu);
 
         // Clear all option
@@ -368,13 +411,17 @@ QAction* penWidthPickMenu(QToolBar* toolbar,
         addToolBar(Qt::LeftToolBarArea, left_toolbar.get());
         // Drawing color picker
         colorPick(left_toolbar.get(), "Pen Color", createPencilIcon, Qt::white, [this](const QColor& c) {
-            m_canvas->setPaintColor(c);
+            drawing_properties_t data;
+            data.line_color = c;
+            m_canvas->setDrawingProperties(data);
             m_width_action->setIcon(createWidthIcon(m_width, c));
         });
 
         // Brush color picker
         colorPick(left_toolbar.get(), "Brush Color", createBrushIcon, Qt::white, [this](const QColor& c) {
-            m_canvas->setBrushColor(c);
+            drawing_properties_t data;
+            data.brush_color = c;
+            m_canvas->setDrawingProperties(data);
         });
 
         // Pen width picker
@@ -389,7 +436,9 @@ QAction* penWidthPickMenu(QToolBar* toolbar,
             2,  // initialWidth
             // Callback signature only receives (int width)
             [this](int width) {
-                m_canvas->setPenWidth(width);
+                drawing_properties_t data;
+                data.pen_width = width;
+                m_canvas->setDrawingProperties(data);
                 m_width = width;
             }
         );
@@ -468,6 +517,7 @@ QAction* penWidthPickMenu(QToolBar* toolbar,
 
     // private data
     int m_width;
+    Qt::PenStyle m_pen_style;
     std::unique_ptr<DrawingCanvas> m_canvas;
     std::unique_ptr<QToolBar> top_toolbar;
     std::unique_ptr<QToolBar> left_toolbar;

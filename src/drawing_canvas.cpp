@@ -42,34 +42,28 @@ void DrawingCanvas::setMode(const ToolMode& mode) {
     }
 }
 
-void DrawingCanvas::setPenWidth(int width) {
-    m_pen_width = width;
-}
-
-void DrawingCanvas::setBrushColor(const QColor& color) {
-    m_brush_color = color;
-    if(m_selected_shape) {
-        // called when a shape is selected
-        m_selected_shape->setColor(ToolType::Brush, color);
-        restoreShape();
+void DrawingCanvas::setDrawingProperties(const drawing_properties_t& data) {
+    if (data.brush_color.has_value()) {
+        m_brush_color = data.brush_color.value();
+        if(m_selected_shape) {
+            // called when a shape is selected
+            m_selected_shape->setColor(ToolType::Brush, m_brush_color);
+            restoreShape();
+        }
     }
-}
-
-void DrawingCanvas::setPaintColor(const QColor& color) {
-   m_drawing_color = color;
-   if (m_selected_shape) {
-        // called when a shape is selected
-        m_selected_shape->setColor(ToolType::Pen, color);
-        restoreShape();
-   }
-}
-
-void DrawingCanvas::setTransparentBrush() {
-    if (m_selected_shape) {
-        // called when a shape is selected
-        m_selected_shape->setColor(ToolType::Brush, Qt::NoBrush);
-        restoreShape();
-   }
+    else if (data.line_color.has_value()) {
+        m_drawing_color = data.line_color.value();
+        if(m_selected_shape) {
+            // called when a shape is selected
+            m_selected_shape->setColor(ToolType::Pen, m_drawing_color);
+            restoreShape();
+        }
+    }
+    else if (data.pen_width.has_value()) {
+        m_pen_width = data.pen_width.value();
+        // TODO for selected shape, update pen width
+    }
+    // TODO for QtPenStyle
 }
 
 void DrawingCanvas::undoLast() {
@@ -169,7 +163,7 @@ void DrawingCanvas::restoreShape() {
         auto last_it = std::prev(m_shapes.end());
         if ( m_shapes.size() > 1 && m_select_shape_it != m_shapes.end()) {
             std::swap(*m_select_shape_it, *last_it);
-            qDebug() << "swapping..";
+            qDebug() << "swapping shapes..";
         }
         // Restore the brush and color of the selected shape
         m_selected_shape = nullptr;
@@ -536,7 +530,6 @@ Shape* DrawingCanvas::getSelectedShape(const QPointF& point) {
             if (it != lastIt) {
                 m_select_shape_it = it;
                 std::swap(*it, *lastIt);
-                qDebug() << "swapped";
             }
             return shape;
         }

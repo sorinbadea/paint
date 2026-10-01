@@ -1,7 +1,6 @@
 #ifndef DRAWINGCANVAS_H
 #define DRAWINGCANVAS_H
 #include "shapes.h"
-#include <QApplication>
 #include <QToolTip>
 #include <QWidget>
 #include <QMouseEvent>
@@ -17,6 +16,7 @@ constexpr qreal clone_x_offset = 10.0;
 constexpr qreal clone_y_offset = 10.0;
 constexpr bool wo_hooks = false;
 constexpr bool w_hooks = true;
+const std::vector<int> preset_widths = {1, 2, 3, 4, 5, 7, 9, 11, 12};
 
 // -------------------------------------------------------------
 // 3. CANVAS WIDGET
@@ -37,10 +37,7 @@ public:
     bool loadFromFile(const QString &filePath);
     //setters
     void setMode(const ToolMode& mode);
-    void setPenWidth(int width);
-    void setPaintColor(const QColor& color);
-    void setBrushColor(const QColor& brush);
-    void setTransparentBrush();
+    void setDrawingProperties(const drawing_properties_t& data);
     void setShapeZoomFactor(const qreal& zoom_factor);
     void setGroupZoomFactor(const qreal& zoom_factor);
     // getters

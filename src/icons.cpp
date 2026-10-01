@@ -315,3 +315,74 @@ QIcon createArcToolIcon(const QColor& iconColor, const QSize& iconSize) {
     painter.end();
     return QIcon(pixmap);
 }
+
+QIcon createLinePreviewIcon(int penWidth, const QSize& iconSize, const QColor& color) {
+    QPixmap pixmap(iconSize);
+    pixmap.fill(Qt::transparent);
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    QPen pen(color, penWidth, Qt::SolidLine, Qt::RoundCap);
+    painter.setPen(pen);
+
+    // Draw horizontal line centered vertically
+    int centerY = iconSize.height() / 2;
+    int margin = 4;
+    painter.drawLine(margin, centerY, iconSize.width() - margin, centerY);
+
+    return QIcon(pixmap);
+}
+
+QString penStyleToText(Qt::PenStyle style)
+{
+    switch (style) {
+        case Qt::NoPen:          return QObject::tr("No Line");
+        case Qt::SolidLine:      return QObject::tr("Solid");
+        case Qt::DashLine:       return QObject::tr("Dashed");
+        case Qt::DotLine:        return QObject::tr("Dotted");
+        case Qt::DashDotLine:    return QObject::tr("Dash-Dot");
+        case Qt::DashDotDotLine: return QObject::tr("Dash-Dot-Dot");
+        case Qt::CustomDashLine: return QObject::tr("Custom Dash");
+        default:                 return QObject::tr("Solid");
+    }
+}
+
+QIcon createPenStylePreviewIcon(Qt::PenStyle style, int penWidth, const QSize& size, const QColor& color) {
+    QPixmap pixmap(size);
+    pixmap.fill(Qt::transparent);
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    QPen pen(color, penWidth, style, Qt::SquareCap);
+    painter.setPen(pen);
+    int centerY = size.height() / 2;
+    int margin = 8;
+    painter.drawLine(QLineF(margin, centerY, size.width() - margin, centerY));
+    painter.end(); // Ensure painting commands flush before converting to QIcon
+    return QIcon(pixmap);
+}
+
+QIcon createPenWidthIcon(int penWidth, const QSize& size) 
+{
+    // 1. Create a transparent pixmap canvas
+    QPixmap pixmap(size);
+    pixmap.fill(Qt::transparent);
+
+    // 2. Setup painter with antialiasing
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    // 3. Configure pen with target width
+    QPen pen(Qt::black, penWidth, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    painter.setPen(pen);
+
+    // 4. Draw horizontal sample line centered vertically
+    int centerY = size.height() / 2;
+    int margin = 4;
+    painter.drawLine(QLineF(margin, centerY, size.width() - margin, centerY));
+
+    // 5. CRITICAL: End painter session before creating QIcon
+    painter.end();
+
+    return QIcon(pixmap);
+}
