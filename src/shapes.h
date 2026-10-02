@@ -41,7 +41,8 @@ enum DrawingMode : uint8_t {
 
 enum class ToolType : uint8_t {
     Pen,
-    Brush
+    Brush,
+    Style
 };
 
 typedef struct {

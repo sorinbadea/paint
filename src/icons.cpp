@@ -254,32 +254,6 @@ QIcon createGroupIcon(unsigned size, const QColor &color) {
     return pixmap;
 }
 
-QIcon createWidthIcon(int width, const QColor& pen_color) {
-    // 1. Create a transparent pixmap
-    QPixmap pixmap(ICON_SIZE, ICON_SIZE);
-    QSize size = QSize(ICON_SIZE, ICON_SIZE);
-    pixmap.fill(Qt::transparent);
-
-    QPainter painter(&pixmap);   
-    // Enable anti-aliasing for smooth, high-quality rendering
-    painter.setRenderHint(QPainter::Antialiasing);
-
-    // 2. Configure pen with the specified width
-    QPen pen(pen_color);
-    pen.setWidth(width);
-    pen.setCapStyle(Qt::RoundCap); // Smooth line ends
-    painter.setPen(pen);
-
-    // 3. Draw horizontal line centered vertically in the icon
-    int startX = 4;
-    int endX = size.width() - 4;
-    int centerY = size.height() / 2;
-
-    painter.drawLine(startX, centerY, endX, centerY);
-    painter.end();
-    return QIcon(pixmap);
-}
-
 QIcon createArcToolIcon(const QColor& iconColor, const QSize& iconSize) {
     QPixmap pixmap(iconSize);
     pixmap.fill(Qt::transparent);
@@ -316,24 +290,6 @@ QIcon createArcToolIcon(const QColor& iconColor, const QSize& iconSize) {
     return QIcon(pixmap);
 }
 
-QIcon createLinePreviewIcon(int penWidth, const QSize& iconSize, const QColor& color) {
-    QPixmap pixmap(iconSize);
-    pixmap.fill(Qt::transparent);
-
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing, true);
-
-    QPen pen(color, penWidth, Qt::SolidLine, Qt::RoundCap);
-    painter.setPen(pen);
-
-    // Draw horizontal line centered vertically
-    int centerY = iconSize.height() / 2;
-    int margin = 4;
-    painter.drawLine(margin, centerY, iconSize.width() - margin, centerY);
-
-    return QIcon(pixmap);
-}
-
 QString penStyleToText(Qt::PenStyle style)
 {
     switch (style) {
@@ -362,27 +318,20 @@ QIcon createPenStylePreviewIcon(Qt::PenStyle style, int penWidth, const QSize& s
     return QIcon(pixmap);
 }
 
-QIcon createPenWidthIcon(int penWidth, const QSize& size) 
-{
-    // 1. Create a transparent pixmap canvas
-    QPixmap pixmap(size);
+QIcon createLinePreviewIcon(int penWidth, const QSize& iconSize, const QColor& color) {
+    QPixmap pixmap(iconSize);
     pixmap.fill(Qt::transparent);
 
-    // 2. Setup painter with antialiasing
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing, true);
-
-    // 3. Configure pen with target width
-    QPen pen(Qt::black, penWidth, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    QPen pen(color, penWidth, Qt::SolidLine, Qt::RoundCap);
     painter.setPen(pen);
 
-    // 4. Draw horizontal sample line centered vertically
-    int centerY = size.height() / 2;
+    // Draw horizontal line centered vertically
+    int centerY = iconSize.height() / 2;
     int margin = 4;
-    painter.drawLine(QLineF(margin, centerY, size.width() - margin, centerY));
-
-    // 5. CRITICAL: End painter session before creating QIcon
-    painter.end();
+    painter.drawLine(margin, centerY, iconSize.width() - margin, centerY);
 
     return QIcon(pixmap);
 }
+

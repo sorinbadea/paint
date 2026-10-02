@@ -56,7 +56,7 @@ private:
         // Populate preset menu actions with icons
         for (int w : preset_widths) {
             QString itemText = QString("%1 px").arg(w);
-            QIcon widthIcon = createPenWidthIcon(w, QSize(48, 20));
+            QIcon widthIcon = createLinePreviewIcon(w, QSize(48, 20), Qt::black);
             QAction* itemAction = menu->addAction(widthIcon, itemText);
             // Attach the preview icon
             itemAction->setIcon(getIcon(w));
@@ -103,6 +103,9 @@ private:
 
             contextMenu.addSeparator();
 
+            // add a sub-menu for different line styles
+            connectSubmenu(contextMenu, font);
+
             QAction* penColorAction = colorPick(&contextMenu, "Pen Color", createPencilIcon, Qt::white, [this](const QColor& c) {
                 drawing_properties_t data;
                 data.line_color = c;
@@ -110,9 +113,6 @@ private:
             });
             // Add action to context menu
             contextMenu.addAction(penColorAction);
-
-            // add a sub-menu for different line styles
-            connectSubmenu(contextMenu, font);
 
             if (shape->type() == ShapeType::Circle
                 || shape->type() == ShapeType::Rectangle
@@ -172,7 +172,7 @@ private:
         for (const auto& w : preset_widths) {
             QString text = QString("%1 px").arg(w);
             // Generate line width preview icon
-            QIcon widthIcon = createPenWidthIcon(w, QSize(48, 20));
+            QIcon widthIcon = createLinePreviewIcon(w, QSize(48, 20), Qt::black);
             QAction *penWidthAction = penSubMenu->addAction(widthIcon, text);
             
             // Force icon visibility on macOS
@@ -414,7 +414,7 @@ private:
             drawing_properties_t data;
             data.line_color = c;
             m_canvas->setDrawingProperties(data);
-            m_width_action->setIcon(createWidthIcon(m_width, c));
+            m_width_action->setIcon(createLinePreviewIcon(m_width, QSize(48, 20), c));
         });
 
         // Brush color picker
@@ -431,7 +431,7 @@ private:
             "Pen Width", 
             // Capture drawing_color by value so icon_creator matches std::function<QIcon(int)>
             [drawing_color](int w) { 
-                return createWidthIcon(w, drawing_color); 
+                return createLinePreviewIcon(w,  QSize(48, 20), drawing_color); 
             }, 
             2,  // initialWidth
             // Callback signature only receives (int width)

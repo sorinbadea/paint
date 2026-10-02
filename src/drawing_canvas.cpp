@@ -621,7 +621,7 @@ bool DrawingCanvas::hookSelected(const HandlePosition handle) const {
 }
 
 void DrawingCanvas::logging(const std::string& message) {
-    qDebug() << message << "- drawing " << m_isDrawing << "- grouping " << m_grouping <<
-        (m_shape == nullptr ? "shape not defined" : "shape defined") << " - " <<
+    qDebug() << message << "- drawing" << m_isDrawing << "- grouping" << m_grouping <<
+        (m_shape == nullptr ? "shape not defined" : "shape defined") << "-" <<
         (m_selected_shape != nullptr ? "shape selected" : "shape not selected ");
 }
