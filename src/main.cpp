@@ -32,7 +32,7 @@ private:
 
         // Use custom icon creator if provided, otherwise generate sample line preview
         auto getIcon = [icon_creator](int w) -> QIcon {
-            return icon_creator ? icon_creator(w) : createLinePreviewIcon(w);
+            return icon_creator ? icon_creator(w) : createLinePreviewIcon(Qt::SolidLine, w, QSize(48, 20), Qt::black);
         };
         penWidthAction->setIcon(getIcon(initialWidth));
         QMenu* menu = new QMenu(toolbar);
@@ -56,7 +56,7 @@ private:
         // Populate preset menu actions with icons
         for (int w : preset_widths) {
             QString itemText = QString("%1 px").arg(w);
-            QIcon widthIcon = createLinePreviewIcon(w, QSize(48, 20), Qt::black);
+            QIcon widthIcon = createLinePreviewIcon(Qt::SolidLine, w, QSize(48, 20), Qt::black);
             QAction* itemAction = menu->addAction(widthIcon, itemText);
             // Attach the preview icon
             itemAction->setIcon(getIcon(w));
@@ -172,7 +172,7 @@ private:
         for (const auto& w : preset_widths) {
             QString text = QString("%1 px").arg(w);
             // Generate line width preview icon
-            QIcon widthIcon = createLinePreviewIcon(w, QSize(48, 20), Qt::black);
+            QIcon widthIcon = createLinePreviewIcon(Qt::SolidLine, w, QSize(48, 20), Qt::black);
             QAction *penWidthAction = penSubMenu->addAction(widthIcon, text);
             
             // Force icon visibility on macOS
@@ -237,7 +237,7 @@ private:
             QString label = penStyleToText(style);
             QAction* act = subMenu->addAction(label);
             // Attach the QLineF preview icon for this pen style
-            act->setIcon(createPenStylePreviewIcon(style, 3, QSize(48, 20), Qt::black));
+            act->setIcon(createLinePreviewIcon(style, 3, QSize(48, 20), Qt::black));
             // Mark currently active style as checked
             act->setCheckable(true);
             // act->setChecked(m_pen_style == style);
@@ -245,6 +245,9 @@ private:
             // Handle selection
             connect(act, &QAction::triggered, this, [this, style]() {
                 m_pen_style = style;
+                drawing_properties_t data;
+                data.pen_style = style;
+                m_canvas->setDrawingProperties(data);
                 update(); // Repaint canvas with updated style
             });
         }
@@ -414,7 +417,7 @@ private:
             drawing_properties_t data;
             data.line_color = c;
             m_canvas->setDrawingProperties(data);
-            m_width_action->setIcon(createLinePreviewIcon(m_width, QSize(48, 20), c));
+            m_width_action->setIcon(createLinePreviewIcon(Qt::SolidLine, m_width, QSize(48, 20), c));
         });
 
         // Brush color picker
@@ -431,7 +434,7 @@ private:
             "Pen Width", 
             // Capture drawing_color by value so icon_creator matches std::function<QIcon(int)>
             [drawing_color](int w) { 
-                return createLinePreviewIcon(w,  QSize(48, 20), drawing_color); 
+                return createLinePreviewIcon(Qt::SolidLine, w,  QSize(48, 20), drawing_color); 
             }, 
             2,  // initialWidth
             // Callback signature only receives (int width)

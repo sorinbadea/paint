@@ -29,7 +29,8 @@ DrawingCanvas::DrawingCanvas(QWidget *parent)
     m_selected_color(Qt::darkYellow),
     m_brush_color(Qt::cyan),
     m_grouping_brush(QColor(100, 10, 0, 32)), // semi transparent brush
-    m_select_brush(QBrush(Qt::darkGray, Qt::DiagCrossPattern)) {
+    m_select_brush(QBrush(Qt::darkGray, Qt::DiagCrossPattern)),
+    m_pen_style(Qt::SolidLine) {
     setBackgroundRole(QPalette::Base); 
     setAutoFillBackground(true);
 }
@@ -43,27 +44,15 @@ void DrawingCanvas::setMode(const ToolMode& mode) {
 }
 
 void DrawingCanvas::setDrawingProperties(const drawing_properties_t& data) {
-    if (data.brush_color.has_value()) {
-        m_brush_color = data.brush_color.value();
-        if(m_selected_shape) {
-            // called when a shape is selected
-            m_selected_shape->setColor(ToolType::Brush, m_brush_color);
-            restoreShape();
-        }
+    m_brush_color   = data.brush_color.value_or(m_brush_color);
+    m_drawing_color = data.line_color.value_or(m_drawing_color);
+    m_pen_style     = data.pen_style.value_or(m_pen_style);
+    m_pen_width     = data.pen_width.value_or(m_pen_width);
+    if(m_selected_shape) {
+        // called when a shape is selected
+        m_selected_shape->setDrawingProperties(data);
+        restoreShape();
     }
-    else if (data.line_color.has_value()) {
-        m_drawing_color = data.line_color.value();
-        if(m_selected_shape) {
-            // called when a shape is selected
-            m_selected_shape->setColor(ToolType::Pen, m_drawing_color);
-            restoreShape();
-        }
-    }
-    else if (data.pen_width.has_value()) {
-        m_pen_width = data.pen_width.value();
-        // TODO for selected shape, update pen width
-    }
-    // TODO for QtPenStyle
 }
 
 void DrawingCanvas::undoLast() {
@@ -160,8 +149,8 @@ void DrawingCanvas::restoreShape() {
         */
         QGuiApplication::restoreOverrideCursor();
         // move back the selected shape at his previous position in the list
-        auto last_it = std::prev(m_shapes.end());
         if ( m_shapes.size() > 1 && m_select_shape_it != m_shapes.end()) {
+            auto last_it = std::prev(m_shapes.end());
             std::swap(*m_select_shape_it, *last_it);
             qDebug() << "swapping shapes..";
         }
@@ -279,57 +268,70 @@ void DrawingCanvas::paintEvent(QPaintEvent *) {
 
 void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
 
-    logging(std::move(std::string{"Mouse press event"}));
-    if (event->button() == Qt::LeftButton) {
-        if (m_group_shapes.size() > 0) {
-            // grouping shapes case
-            if (!QGuiApplication::overrideCursor())
-                QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
-            m_current_pos = event->position();
+    if (!event || event->button() != Qt::LeftButton) {
+        QWidget::mousePressEvent(event); // Call base class if right-click or middle-click
+        return;
+    }
+    logging("Mouse press event");
+    const QPointF mousePos = event->position();
+
+    // Group Dragging
+    if (!m_group_shapes.empty()) {
+        if (!QGuiApplication::overrideCursor()) {
+            QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
         }
-        // Select mode
-        //------------
-        else if (m_selected_shape) {
-            // A shape was identified and selected
-            m_handle = m_selected_shape->hookTest(event->position());
-            qDebug() << "hook test " << m_handle;
-            if (m_handle != HandlePosition::None) {
-                // hook click, will resize shape horizontally or vertically
-                m_start_zoom_pos = event->position();
-            }
-            else if (!m_selected_shape->contains(event->position())) {
-                // mouse click outside the selected shape, restore shape
-                restoreShape();
-            }
-            else
-                m_start_pos = m_current_pos = event->position();
-        }
+        m_current_pos = mousePos;
+        update();
+        event->accept();
+        return;
+    }
+
+    // Shape Manipulation (Resize or Move)
+    if (m_selected_shape) {
+        m_handle = m_selected_shape->hookTest(mousePos);
+        qDebug() << "Hook test:" << m_handle;
+
+        if (m_handle != HandlePosition::None) {
+            // Clicked a resize handle
+            m_start_zoom_pos = mousePos;
+        } 
+        else if (m_selected_shape->contains(mousePos)) {
+            // Clicked inside the active shape (prepare to drag)
+            m_start_pos = m_current_pos = mousePos;
+        } 
         else {
-            // check if the mouse is over a shape
-            m_selected_shape = getSelectedShape(event->position());
-            if (m_selected_shape) {
-                // A Shape was found under the cursor
-                QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
-                m_current_pos = event->position();
-                m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
-                    std::move(QString("Use the wheel to zoom-in zoom-out, click right for more actions")));
-            }
-            else
-                // drawing mode
-                //-------------
-                drawingMode(event);
+            // Clicked outside the active shape -> Deselect
+            restoreShape();
         }
         update();
         event->accept();
+        return;
     }
+    // Shape Selection / Picking
+    m_selected_shape = getSelectedShape(mousePos);
+    if (m_selected_shape) {
+        QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
+        m_current_pos = mousePos;
+
+        const QPoint globalPos = mapToGlobal(mousePos.toPoint());
+        m_selected_shape->toolHint(
+            globalPos,
+            QStringLiteral("Use the wheel to zoom-in zoom-out, click right for more actions")
+        );
+    } 
+    // 4. Drawing Mode (No shape selected)
+    else {
+        drawingMode(event);
+    }
+    update();
+    event->accept();
 }
 
 void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
 
-    logging(std::move(std::string{"Mouse move event"}));
+    logging(std::string{"Mouse move event"});
     if (m_isDrawing) {
         // Drawing mode
-        // return if no new shape
         if (!m_shape)
             return;
 
@@ -372,7 +374,7 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
         update();
         event->accept();
     }
-    else if (m_group_shapes.size() > 0) {
+    else if (m_grouping) {        
         // grouping case
         QPointF delta = event->position() - m_current_pos;
         for(const auto& shape : m_group_shapes) {
@@ -389,56 +391,58 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
 
 void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
 
-    logging(std::move(std::string{"Mouse release event"}));
-    if (event->button() == Qt::LeftButton) {
-        // one shape is selected
-        if (m_selected_shape != nullptr) {
-            m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
-                std::move(QString("Use the wheel to zoom-in zoom-out, click outside when done")));
-        }
-        else if (m_isDrawing && m_shape) {
-            // Drawing case
-            if (   m_mode == ToolMode::Line 
-                || m_mode == ToolMode::Circle
-                || m_mode == ToolMode::Rectangle
-                || m_mode == ToolMode::Arc
-                || m_mode == ToolMode::Group) {
-                // Line, Rectangle, Circle, Arc and the grouping rectangle
-                m_current_pos = event->position();
-                // check if the Shape is big enough
-                QPointF delta = m_current_pos - m_start_pos;
-                qreal distanceSquared = delta.x() * delta.x() + delta.y() * delta.y();
-                if (distanceSquared >= (QApplication::startDragDistance() * QApplication::startDragDistance())) {
-                    // Store the new shape, including the grouping one
-                    finalizeShape(event->position());
-                }
-                else
-                    // not a real drag
-                    m_shape.reset();
-            }
-            else if (m_mode == ToolMode::Polygon)
-                // Polygon or Arc
-                m_shape->toolHint(mapToGlobal(event->position().toPoint()),
-                    std::move(QString("Right click to finish the shape")));
-        }
-        else if (m_group_shapes.size() > 0) {
-            assert(m_shape);
-            if (!m_shape->contains(event->position())) {
-                /*
-                    click outside the grouping rectangle
-                    clear the list containing the grouped shapes and flags
-                */
-               m_grouping = false;
-                m_shape.reset();
-                m_group_shapes.clear();
-                QGuiApplication::restoreOverrideCursor();
-            } else
-                m_shape->toolHint(mapToGlobal(event->position().toPoint()),
-                    std::move(QString("Use the wheel to zoom in zoom out")));
-        }
-        update();
-        event->accept();
+    if (!event || event->button() != Qt::LeftButton) {
+        QWidget::mouseReleaseEvent(event); // Call base class if right-click or middle-click
+        return;
     }
+    logging(std::string{"Mouse release event"});
+    // one shape is selected
+    if (m_selected_shape != nullptr) {
+        m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
+            std::move(QString("Use the wheel to zoom-in zoom-out, click outside when done")));
+    }
+    else if (m_isDrawing && m_shape) {
+        // Drawing case
+        if (   m_mode == ToolMode::Line 
+            || m_mode == ToolMode::Circle
+            || m_mode == ToolMode::Rectangle
+            || m_mode == ToolMode::Arc
+            || m_mode == ToolMode::Group) {
+            // Line, Rectangle, Circle, Arc and the grouping rectangle
+            m_current_pos = event->position();
+            // check if the Shape is big enough
+            QPointF delta = m_current_pos - m_start_pos;
+            qreal distanceSquared = delta.x() * delta.x() + delta.y() * delta.y();
+            if (distanceSquared >= (QApplication::startDragDistance() * QApplication::startDragDistance())) {
+                // Store the new shape, including the grouping one
+                finalizeShape(event->position());
+            }
+            else
+                // ! the shape is too small
+                m_shape.reset();
+        }
+    else if (m_mode == ToolMode::Polygon)
+        // Polygon or Arc
+        m_shape->toolHint(mapToGlobal(event->position().toPoint()),
+            std::move(QString("Right click to finish the shape")));
+    }
+    else if (m_grouping) {
+        assert(m_shape);
+        if (!m_shape->contains(event->position())) {
+            /*
+                click outside the grouping rectangle
+                clear the list containing the grouped shapes and flags
+            */
+            m_grouping = false;
+            m_shape.reset();
+            m_group_shapes.clear();
+            QGuiApplication::restoreOverrideCursor();
+        } else
+            m_shape->toolHint(mapToGlobal(event->position().toPoint()),
+                std::move(QString("Use the wheel to zoom in zoom out")));
+    }
+    update();
+    event->accept();
 }
 
 void DrawingCanvas::wheelEvent(QWheelEvent *event) {
@@ -472,57 +476,77 @@ void DrawingCanvas::wheelEvent(QWheelEvent *event) {
 }
 
 void DrawingCanvas::drawingMode(const QMouseEvent *event) {
+    if (!event) return;
+
+    if (m_mode == ToolMode::Group && m_shapes.empty()) {
+        return;
+    }
+
     m_start_pos = m_current_pos = event->position();
     m_isDrawing = true;
-    QPen pencil(QPen(m_drawing_color, m_pen_width, Qt::SolidLine));
-    QBrush brush(m_brush_color, Qt::SolidPattern);
-    m_grouping =false;
-    if (m_mode == ToolMode::Line) {
-        QLineF line(m_start_pos, m_current_pos);
+    m_grouping = false;
+
+    const QPen pencil(m_drawing_color, m_pen_width, m_pen_style);
+    const QBrush brush(m_brush_color, Qt::SolidPattern);
+
+    switch (m_mode) {
+    case ToolMode::Line: {
+        const QLineF line(m_start_pos, m_current_pos);
         m_shape = std::make_unique<LineShape>(line, pencil, brush);
+        break;
     }
-    else if (m_mode == ToolMode::Circle) {
-        qreal radius = std::hypot(m_current_pos.x() - m_start_pos.x(), m_current_pos.y() - m_start_pos.y());
-        m_shape = std::make_unique<CircleShape>(m_start_pos, radius, pencil, brush);
+    case ToolMode::Circle: {
+        // At press time, radius is 0 because start_pos == current_pos
+        m_shape = std::make_unique<CircleShape>(m_start_pos, 0.0, pencil, brush);
+        break;
     }
-    else if (m_mode == ToolMode::Rectangle) {
-        QRectF rect(m_start_pos, m_current_pos);
+    case ToolMode::Rectangle: {
+        const QRectF rect(m_start_pos, m_current_pos);
         m_shape = std::make_unique<RectangleShape>(rect, pencil, brush);
+        break;
     }
-    else if (m_mode == ToolMode::Polygon) {
-        /* 
-            In case of polygon create the Shape object,
-            than add polygon points to it
-        */
-        if (m_shape == nullptr) {
+    case ToolMode::Polygon: {
+        if (!m_shape) {
             m_shape = std::make_unique<PolygonShape>(pencil, brush);
         }
-        m_shape->addPoint(event->position());
+        m_shape->addPoint(m_start_pos);
+        break;
     }
-    else if (m_mode == ToolMode::Arc) {
-        m_shape = std::make_unique<ArcShape>(pencil, brush);              
+    case ToolMode::Arc: {
+        m_shape = std::make_unique<ArcShape>(pencil, brush);
+        break;
     }
-    else if (m_mode == ToolMode::Group) {
-        if (m_shapes.size() == 0)
-            return;
-        QRectF rect(m_start_pos, m_current_pos);
-        QPen pencil(QPen(Qt::darkGray, 2, Qt::DashLine));
-        // create the m_shape representing the rectangle grouping the shapes
-        m_shape = std::make_unique<RectangleShape>(rect, pencil, m_grouping_brush);
+    case ToolMode::Group: {
+        const QRectF rect(m_start_pos, m_current_pos);
+        const QPen groupPen(Qt::darkGray, 2, Qt::DashLine);
+        
+        m_shape = std::make_unique<RectangleShape>(rect, groupPen, m_grouping_brush);
         m_grouping = true;
-        qDebug() << "grouping when m_shape is created? "<< m_grouping;
+        qDebug() << "Grouping selection started.";
+        break;
     }
-    else
-        qDebug() << "Mouse press event, unknown drawing mode..";
+    default:
+        m_isDrawing = false;
+        qWarning() << "Mouse press event: unknown drawing mode" << static_cast<int>(m_mode);
+        break;
+    }
 }
 
 Shape* DrawingCanvas::getSelectedShape(const QPointF& point) {
+
+    if (m_shapes.empty())
+        return nullptr;
+
+    if (m_shapes.size() == 1 && m_shapes.front()->contains(point)) {
+        m_select_shape_it = m_shapes.begin();
+        return m_shapes.front().get();
+    }
+
     auto lastIt = std::prev(m_shapes.end());
     m_select_shape_it = m_shapes.end();
     for (auto it = m_shapes.begin(); it != m_shapes.end(); ++it) {
         Shape* shape = it->get();
         if (shape->contains(point)) {
-            m_selected_shape = shape;
             /* 
             - Identify a shape under the cursor;
             - bring in front the selected shape;
@@ -622,6 +646,6 @@ bool DrawingCanvas::hookSelected(const HandlePosition handle) const {
 
 void DrawingCanvas::logging(const std::string& message) {
     qDebug() << message << "- drawing" << m_isDrawing << "- grouping" << m_grouping <<
-        (m_shape == nullptr ? "shape not defined" : "shape defined") << "-" <<
+        (m_shape == nullptr ? "shape not defined" : "new shape defined") << "-" <<
         (m_selected_shape != nullptr ? "shape selected" : "shape not selected ");
 }

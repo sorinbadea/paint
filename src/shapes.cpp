@@ -87,8 +87,11 @@ void LineShape::setShapeData(const ShapeData_t& shape_data) {
     m_line.setP1(shape_data.end.value());
 }
 
-void LineShape::setColor(const ToolType& tool, const QColor color) {
-    m_pen.setColor(color);
+void LineShape::setDrawingProperties(const drawing_properties_t& data) {
+    if (data.line_color.has_value())
+        m_pen.setColor(data.line_color.value());
+    else if (data.pen_style.has_value())
+        m_pen.setStyle(data.pen_style.value());
 }
 
 void LineShape::moveRelative(const QPointF &delta) {
@@ -241,17 +244,20 @@ void RectangleShape::setShapeData(const ShapeData_t& shape_data) {
     m_rectangle = m_rectangle.normalized();
 }
 
-void RectangleShape::setColor(const ToolType& tool, const QColor color) {
-    if (tool == ToolType::Pen)
-        m_pen.setColor(color);
-    else if (tool == ToolType::Brush) {
-        if (color != Qt::NoBrush)
-            m_brush.setColor(color);
+void RectangleShape::setDrawingProperties(const drawing_properties_t& data) {
+    if (data.line_color.has_value())
+        m_pen.setColor(data.line_color.value());
+    else if(data.brush_color.has_value()) {
+       if (data.brush_color.value() != Qt::NoBrush) 
+            m_brush.setColor(data.brush_color.value());
         else {
+            // transparent brush
             m_brush.setColor(Qt::transparent);
             m_brush.setStyle(Qt::SolidPattern);
         }
     }
+    else if (data.pen_style.has_value())
+        m_pen.setStyle(data.pen_style.value());
 }
 
 void RectangleShape::moveRelative(const QPointF &delta) {
@@ -453,17 +459,20 @@ void CircleShape::setShapeData(const ShapeData_t& shape_data) {
     m_radius_y = m_radius_x;
 }
 
-void CircleShape::setColor(const ToolType& tool, const QColor color) {
-    if (tool == ToolType::Pen)
-        m_pen.setColor(color);
-    else if (tool == ToolType::Brush) {
-        if (color != Qt::NoBrush)
-            m_brush.setColor(color);
+void CircleShape::setDrawingProperties(const drawing_properties_t& data) {
+    if (data.line_color.has_value())
+        m_pen.setColor(data.line_color.value());
+    else if(data.brush_color.has_value()) {
+       if (data.brush_color.value() != Qt::NoBrush) 
+            m_brush.setColor(data.brush_color.value());
         else {
+            // transparent brush
             m_brush.setColor(Qt::transparent);
             m_brush.setStyle(Qt::SolidPattern);
         }
     }
+    else if (data.pen_style.has_value())
+        m_pen.setStyle(data.pen_style.value());
 }
 
 void CircleShape::moveRelative(const QPointF &delta) {
@@ -642,17 +651,20 @@ QPolygonF PolygonShape::getPoints() {
 void PolygonShape::setShapeData(const ShapeData_t& shape_data) {
 }
 
-void PolygonShape::setColor(const ToolType& tool, const QColor color) {
-    if (tool == ToolType::Pen)
-        m_pen.setColor(color);
-    else if (tool == ToolType::Brush) {
-        if (color != Qt::NoBrush)
-            m_brush.setColor(color);
+void PolygonShape::setDrawingProperties(const drawing_properties_t& data) {
+    if (data.line_color.has_value())
+        m_pen.setColor(data.line_color.value());
+    else if(data.brush_color.has_value()) {
+       if (data.brush_color.value() != Qt::NoBrush) 
+            m_brush.setColor(data.brush_color.value());
         else {
+            // transparent brush
             m_brush.setColor(Qt::transparent);
             m_brush.setStyle(Qt::SolidPattern);
         }
     }
+    else if (data.pen_style.has_value())
+        m_pen.setStyle(data.pen_style.value());
 }
 
 void PolygonShape::moveRelative(const QPointF &delta) {
@@ -1019,9 +1031,12 @@ QPolygonF ArcShape::getPoints() {
 void ArcShape::setShapeData(const ShapeData_t& shape_data) {
 }
 
-void ArcShape::setColor(const ToolType& tool, const QColor color) { 
-    m_pen.setColor(color);
-}
+void ArcShape::setDrawingProperties(const drawing_properties_t& data) {
+    if (data.line_color.has_value())
+        m_pen.setColor(data.line_color.value());
+    else if (data.pen_style.has_value())
+        m_pen.setStyle(data.pen_style.value());
+}  
 
 void ArcShape::moveRelative(const QPointF &delta) {
     m_startPoint += delta;

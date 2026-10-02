@@ -123,6 +123,7 @@ private:
     QColor m_brush_color;
     QBrush m_select_brush;
     QBrush m_grouping_brush;
+    Qt::PenStyle m_pen_style;
 
     // zoom factor
     qreal m_zoom_factor;
