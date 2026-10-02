@@ -304,27 +304,13 @@ QString penStyleToText(Qt::PenStyle style)
     }
 }
 
-QIcon createPenStylePreviewIcon(Qt::PenStyle style, int penWidth, const QSize& size, const QColor& color) {
-    QPixmap pixmap(size);
-    pixmap.fill(Qt::transparent);
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing, true);
-    QPen pen(color, penWidth, style, Qt::SquareCap);
-    painter.setPen(pen);
-    int centerY = size.height() / 2;
-    int margin = 8;
-    painter.drawLine(QLineF(margin, centerY, size.width() - margin, centerY));
-    painter.end(); // Ensure painting commands flush before converting to QIcon
-    return QIcon(pixmap);
-}
-
-QIcon createLinePreviewIcon(int penWidth, const QSize& iconSize, const QColor& color) {
+QIcon createLinePreviewIcon(Qt::PenStyle style, int penWidth, const QSize& iconSize, const QColor& color) {
     QPixmap pixmap(iconSize);
     pixmap.fill(Qt::transparent);
 
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing, true);
-    QPen pen(color, penWidth, Qt::SolidLine, Qt::RoundCap);
+    QPen pen(color, penWidth, style, Qt::RoundCap);
     painter.setPen(pen);
 
     // Draw horizontal line centered vertically
