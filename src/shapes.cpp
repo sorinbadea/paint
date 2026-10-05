@@ -10,7 +10,7 @@ Shape::Shape(QPen pen, QBrush brush) :
     m_pen(pen), m_brush(brush),
     m_shape_select_brush(QBrush(Qt::darkGray, Qt::DiagCrossPattern)),
     m_shape_select_pencil(QPen(Qt::darkYellow, 1.5, Qt::DashLine)),
-    m_hook_pen(QPen(Qt::blue, 2, Qt::SolidLine)),
+    m_hook_pen(QPen(Qt::blue, 2.5, Qt::SolidLine)),
     m_hook_brush(QBrush(Qt::white, Qt::SolidPattern)) {
 }
 
@@ -92,6 +92,8 @@ void LineShape::setDrawingProperties(const drawing_properties_t& data) {
         m_pen.setColor(data.line_color.value());
     else if (data.pen_style.has_value())
         m_pen.setStyle(data.pen_style.value());
+    else if (data.pen_width.has_value())
+        m_pen.setWidth(data.pen_width.value());
 }
 
 void LineShape::moveRelative(const QPointF &delta) {
@@ -247,6 +249,8 @@ void RectangleShape::setShapeData(const ShapeData_t& shape_data) {
 void RectangleShape::setDrawingProperties(const drawing_properties_t& data) {
     if (data.line_color.has_value())
         m_pen.setColor(data.line_color.value());
+    else if (data.pen_width.has_value())
+        m_pen.setWidth(data.pen_width.value());
     else if(data.brush_color.has_value()) {
        if (data.brush_color.value() != Qt::NoBrush) 
             m_brush.setColor(data.brush_color.value());
@@ -462,6 +466,8 @@ void CircleShape::setShapeData(const ShapeData_t& shape_data) {
 void CircleShape::setDrawingProperties(const drawing_properties_t& data) {
     if (data.line_color.has_value())
         m_pen.setColor(data.line_color.value());
+    else if (data.pen_width.has_value())
+        m_pen.setWidth(data.pen_width.value());
     else if(data.brush_color.has_value()) {
        if (data.brush_color.value() != Qt::NoBrush) 
             m_brush.setColor(data.brush_color.value());
@@ -654,6 +660,8 @@ void PolygonShape::setShapeData(const ShapeData_t& shape_data) {
 void PolygonShape::setDrawingProperties(const drawing_properties_t& data) {
     if (data.line_color.has_value())
         m_pen.setColor(data.line_color.value());
+    else if (data.pen_width.has_value())
+        m_pen.setWidth(data.pen_width.value());
     else if(data.brush_color.has_value()) {
        if (data.brush_color.value() != Qt::NoBrush) 
             m_brush.setColor(data.brush_color.value());
@@ -1036,6 +1044,8 @@ void ArcShape::setDrawingProperties(const drawing_properties_t& data) {
         m_pen.setColor(data.line_color.value());
     else if (data.pen_style.has_value())
         m_pen.setStyle(data.pen_style.value());
+    else if (data.pen_width.has_value())
+        m_pen.setWidth(data.pen_width.value());
 }  
 
 void ArcShape::moveRelative(const QPointF &delta) {

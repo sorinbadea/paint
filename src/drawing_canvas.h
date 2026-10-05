@@ -45,8 +45,10 @@ public:
     bool isGrouping() const;
     ToolMode getToolMode() const;
     const QColor& getDrawingColor() const;
+    const int& getPenWidth() const;
     // context menu actions
     void cloneShape();   // Copy/Paste
+    void cloneGroup();   // Clone all grouped shapes
     void restoreShape(); // Restore shape properties
     void removeShape();  // Remove selected shape
     void removeGroup();  // Remove grouped shapes
@@ -79,6 +81,10 @@ private:
 
     // console log
     void logging(const std::string& message);
+
+    // return true if the shape beeing draw is
+    // Line, Rectangle, Circle, Arc or grouping (draw in one shot, except Polygon)
+    bool oneShotShape() const;
 
     // Attributes
     // drawing mode, Circle, Line, Selection..

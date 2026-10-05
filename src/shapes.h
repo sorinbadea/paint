@@ -2,6 +2,7 @@
 #define SHAPES_H
 
 #include <iostream>
+#include <QString>
 #include <QApplication>
 #include <QPainter>
 #include <QPainterPath>

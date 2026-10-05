@@ -44,14 +44,19 @@ void DrawingCanvas::setMode(const ToolMode& mode) {
 }
 
 void DrawingCanvas::setDrawingProperties(const drawing_properties_t& data) {
-    m_brush_color   = data.brush_color.value_or(m_brush_color);
-    m_drawing_color = data.line_color.value_or(m_drawing_color);
-    m_pen_style     = data.pen_style.value_or(m_pen_style);
-    m_pen_width     = data.pen_width.value_or(m_pen_width);
     if(m_selected_shape) {
-        // called when a shape is selected
+        // Do not store the drawing pen/brush/style/color
+        // if the shape is selected;
         m_selected_shape->setDrawingProperties(data);
         restoreShape();
+    }
+    else
+    {
+        // begin drawing;
+        m_brush_color   = data.brush_color.value_or(m_brush_color);
+        m_drawing_color = data.line_color.value_or(m_drawing_color);
+        m_pen_style     = data.pen_style.value_or(m_pen_style);
+        m_pen_width     = data.pen_width.value_or(m_pen_width);
     }
 }
 
@@ -209,6 +214,17 @@ void DrawingCanvas::cloneShape() {
     update();
 }
 
+void DrawingCanvas::cloneGroup() {
+    for(const auto& shape : m_group_shapes) {
+        auto cloned_shape = shape->clone();
+        // move a bit on the right the cloned shapes
+        QPointF delta = QPointF(clone_x_offset, clone_y_offset);
+        cloned_shape->moveRelative(delta);
+        m_shapes.push_front(std::move(cloned_shape));
+    }
+    update();
+}
+
 Shape* DrawingCanvas::isShapeSelected() const {
     return m_selected_shape;
 }
@@ -223,6 +239,10 @@ ToolMode DrawingCanvas::getToolMode() const {
 
 const QColor& DrawingCanvas::getDrawingColor() const {
     return m_drawing_color;
+}
+
+const int& DrawingCanvas::getPenWidth() const {
+    return m_pen_width;
 }
 
 void DrawingCanvas::paintEvent(QPaintEvent *) {
@@ -397,18 +417,15 @@ void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
     }
     logging(std::string{"Mouse release event"});
     // one shape is selected
-    if (m_selected_shape != nullptr) {
+    if (m_selected_shape) {
         m_selected_shape->toolHint(mapToGlobal(event->position().toPoint()),
-            std::move(QString("Use the wheel to zoom-in zoom-out, click outside when done")));
+            std::move(QString("Use the wheel to zoom-in zoom-out, click right for more actions")));
     }
-    else if (m_isDrawing && m_shape) {
-        // Drawing case
-        if (   m_mode == ToolMode::Line 
-            || m_mode == ToolMode::Circle
-            || m_mode == ToolMode::Rectangle
-            || m_mode == ToolMode::Arc
-            || m_mode == ToolMode::Group) {
-            // Line, Rectangle, Circle, Arc and the grouping rectangle
+    // Drawing or grouping case
+    else if (m_isDrawing) {
+        if (oneShotShape()) {
+            assert(m_shape);
+             // Line, Rectangle, Circle, Arc and the grouping rectangle
             m_current_pos = event->position();
             // check if the Shape is big enough
             QPointF delta = m_current_pos - m_start_pos;
@@ -418,13 +435,9 @@ void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
                 finalizeShape(event->position());
             }
             else
-                // ! the shape is too small
+                // !the shape is too small
                 m_shape.reset();
         }
-    else if (m_mode == ToolMode::Polygon)
-        // Polygon or Arc
-        m_shape->toolHint(mapToGlobal(event->position().toPoint()),
-            std::move(QString("Right click to finish the shape")));
     }
     else if (m_grouping) {
         assert(m_shape);
@@ -648,4 +661,12 @@ void DrawingCanvas::logging(const std::string& message) {
     qDebug() << message << "- drawing" << m_isDrawing << "- grouping" << m_grouping <<
         (m_shape == nullptr ? "shape not defined" : "new shape defined") << "-" <<
         (m_selected_shape != nullptr ? "shape selected" : "shape not selected ");
+}
+
+bool DrawingCanvas::oneShotShape() const {
+    return (m_mode == ToolMode::Line
+         || m_mode == ToolMode::Circle
+         || m_mode == ToolMode::Rectangle
+         || m_mode == ToolMode::Arc
+         || m_mode == ToolMode::Group);
 }
