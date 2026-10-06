@@ -65,33 +65,36 @@ QIcon createPolygonIcon() {
     return QIcon(pixmap);
 }
 
-QIcon createSelectIcon(unsigned size, const QColor &dotColor) {
-    // 1. Create a transparent pixmap buffer
+QIcon createSelectIcon(unsigned size, const QColor &arrow_color) {
+    // 1. Create a transparent pixmap
     QPixmap pixmap(size, size);
     pixmap.fill(Qt::transparent);
 
     QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(dotColor);
+    painter.setRenderHint(QPainter::Antialiasing, true);
 
-    // 2. Define grid parameters (2 columns x 3 rows of grip dots)
-    int dotRadius = size / 13; // Radius of each dot
-    if (dotRadius < 2) dotRadius = 2;
+    // 2. Define the cursor arrow shape (normalized to a 0.0 - 1.0 coordinate space)
+    QPainterPath path;
+    path.moveTo(0.080f, 0.090f); // Tip
+    path.lineTo(0.080f, 0.730f); // Left edge
+    path.lineTo(0.256f, 0.554f); // Inner corner left
+    path.lineTo(0.400f, 0.810f); // Tail right
+    path.lineTo(0.528f, 0.738f); // Tail tip
+    path.lineTo(0.384f, 0.482f); // Inner corner right
+    path.lineTo(0.600f, 0.482f); // Right barb
+    path.closeSubpath();
+    
+    // 3. Scale path to fit the target icon pixel size
+    QTransform matrix;
+    matrix.scale(size, size);
+    QPainterPath scaledPath = matrix.map(path);
 
-    int spacingY = size / 4;  // Vertical distance between dots
-    int col1_X = size / 3;    // Left column X
-    int col2_X = (size * 2) / 3; // Right column X
-    int startY = size / 4;    // Top row Y
+    // 4. Draw stroke (outline) and fill
+    QPen pen(arrow_color, 1.5, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin);
+    painter.setPen(pen);
+    painter.setBrush(arrow_color);
+    painter.drawPath(scaledPath);
 
-    // 3. Draw the 6 dots forming a vertical drag grip handle
-    for (int i = 0; i < 3; ++i) {
-        int y = startY + (i * spacingY);
-        // Left column dot
-        painter.drawEllipse(QPoint(col1_X, y), dotRadius, dotRadius);
-        // Right column dot
-        painter.drawEllipse(QPoint(col2_X, y), dotRadius, dotRadius);
-    }
     return QIcon(pixmap);
 }
 

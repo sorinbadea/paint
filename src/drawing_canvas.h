@@ -86,6 +86,8 @@ private:
     // Line, Rectangle, Circle, Arc or grouping (draw in one shot, except Polygon)
     bool oneShotShape() const;
 
+    bool drawingShape() const;
+
     // Attributes
     // drawing mode, Circle, Line, Selection..
     ToolMode m_mode;

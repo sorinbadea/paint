@@ -23,12 +23,12 @@ helper file for icons drawing
 #include <QToolButton>
 #include <QInputDialog>
 
-constexpr unsigned ICON_SIZE = 30;
+constexpr unsigned ICON_SIZE = 28;
 
 QIcon   createLineIcon(unsigned size = ICON_SIZE);
 QIcon   createCircleIcon(unsigned size = ICON_SIZE);
 QIcon   createRectangleIcon(unsigned size = ICON_SIZE);
-QIcon   createSelectIcon(unsigned size = ICON_SIZE, const QColor &dotColor = QColor(10, 10, 10));
+QIcon   createSelectIcon(unsigned size = ICON_SIZE - 4, const QColor &arrow_color = QColor(10, 10, 10));
 QIcon   createPencilIcon(const QColor &color);
 QIcon   createBrushIcon(const QColor &color);
 QIcon   createPolygonIcon();

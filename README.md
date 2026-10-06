@@ -14,12 +14,13 @@ It allows the following operations:
   - clone a selectes shape (Copy/Paste)
   - change the background or the foreground color of a shape
   - set the background of a shape to be transparent
-  - change the pen width, color and brush color
+  - change the pen width, pen style, pen color and brush color
 
 3. Group shapes
    By click and drag over shapes it is possible to group them allowing the following:
   - drag the whole group
   - ZoomIn ZoomOut using the wheel
+  - Clone the whole group
 
 4. Persistency
   - save current work that load it later
@@ -28,4 +29,5 @@ Remark:
 -some parts of the code were written using Google Gemini AI
 
 ![App Screenshot](./screenshots/Screenshot2.png)
+![App Screenshot](./screenshots/screenshot1.png)
 

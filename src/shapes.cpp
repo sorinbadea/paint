@@ -512,7 +512,7 @@ void CircleShape::resizeShape(const QPointF &delta, const HandlePosition hp) {
             break;
         }
         default:
-            assert(0);
+            qDebug() << "resize shape, unknown handle";
             break;
     }
 }
