@@ -324,3 +324,90 @@ QIcon createLinePreviewIcon(Qt::PenStyle style, int penWidth, const QSize& iconS
     return QIcon(pixmap);
 }
 
+QIcon createArrowPreviewIcon(const QSize& iconSize, const QColor& color, const ArrowEndPoint& arrow_style) {
+    QPixmap pixmap(iconSize);
+    pixmap.fill(Qt::transparent);
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    QPen pen(color);
+    int penWidth = qMax(2, iconSize.width() / 20); 
+    pen.setWidth(penWidth);
+    pen.setCapStyle(Qt::RoundCap);
+    painter.setPen(pen);
+
+    qreal padding = iconSize.width() * 0.2;
+    QPointF p1(padding, iconSize.height() / 2.0);
+    QPointF p2(iconSize.width() - padding, iconSize.height() / 2.0);
+
+    // 5. Calculate arrow properties dynamically based on icon size
+    double arrowSize = iconSize.width()/2;
+
+    QLineF wing1(p2, p1);
+    wing1.setLength(arrowSize);
+    wing1.setAngle(150);
+
+    QLineF wing2(p2, p1);
+    wing2.setLength(arrowSize);
+    wing2.setAngle(-150);
+
+    // 6. Draw and fill the arrowhead polygon at p2
+    QPolygonF arrowHead;
+    arrowHead << p2 << wing1.p2() << wing2.p2();
+
+    if (arrow_style == ArrowEndPoint::SolidArrow)
+        painter.setBrush(color);
+    else if (arrow_style == ArrowEndPoint::EmptyArrow)
+        painter.setBrush(Qt::transparent);
+    painter.drawPolygon(arrowHead);
+    painter.end();
+
+    return QIcon(pixmap);
+}
+
+QIcon createRectanglePreviewIcon(const QSize& iconSize, const QColor& color) {
+    // 1. Create a transparent pixmap for the icon
+    QPixmap pixmap(iconSize);
+    pixmap.fill(Qt::transparent);
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    // 2. Configure the pen
+    QPen pen(color);
+    int penWidth = qMax(2, iconSize.width() / 20); 
+    pen.setWidth(penWidth);
+    pen.setCapStyle(Qt::RoundCap);
+    painter.setPen(pen);
+
+    // 3. Define a representative line inside the icon bounds with padding
+    qreal padding = iconSize.width() * 0.25;
+    QPointF p1(padding, iconSize.height() / 2.0);                  // Rectangle extremity location
+    QPointF p2(iconSize.width() - padding, iconSize.height() / 2.0); // Line end
+    QLineF line(p1, p2);
+
+    // 4. Draw the main line shaft
+    painter.drawLine(line);
+
+    // 5. Define rectangle dimensions proportionally to icon size
+    qreal rectLength = iconSize.width()/2;
+    qreal rectWidth  = iconSize.width()/2;
+
+    // 6. Draw the centered rectangle rotated along the line direction at p1
+    painter.save();
+    painter.translate(p1);
+    painter.rotate(line.angle());
+
+    // Center the rectangle on p1 (X and Y centered)
+    QRectF localRect(-rectLength / 2.0, -rectWidth / 2.0, rectLength, rectWidth);
+    painter.setBrush(color);
+    painter.drawRect(localRect);
+    painter.restore();
+    painter.end();
+
+    return QIcon(pixmap);
+}
+
+
+

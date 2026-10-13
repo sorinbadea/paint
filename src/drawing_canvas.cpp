@@ -158,15 +158,16 @@ void DrawingCanvas::finalizeShape(std::optional<QPointF> const&  point) {
 void DrawingCanvas::restoreShape() {
     if (m_selected_shape) {
         /* 
-          The shape was selected for zooming or moving
-          restore brushes and pencil, restore mouse cursor
+          The shape was selected for zooming or moving, restore mouse cursor
         */
         QGuiApplication::restoreOverrideCursor();
-        // move back the selected shape at his previous position in the list
-        if ( m_shapes.size() > 1 && m_select_shape_it != m_shapes.end()) {
-            auto last_it = std::prev(m_shapes.end());
-            std::swap(*m_select_shape_it, *last_it);
-            qDebug() << "swapping shapes..";
+        /*
+            reorder the shape like it was before selecting,
+            using .splice prevents deep copy
+        */
+        if (m_select_shape_it != m_shapes.end()) {
+            m_shapes.splice(m_original_next_it, m_shapes, m_select_shape_it);
+            //qDebug() << "selected shape swapped back";
         }
         // Restore the brush and color of the selected shape
         m_selected_shape = nullptr;
@@ -317,7 +318,7 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
     // Shape Manipulation (Resize or Move)
     if (m_selected_shape) {
         m_handle = m_selected_shape->hookTest(mousePos);
-        qDebug() << "Hook test:" << m_handle;
+        // qDebug() << "Hook test:" << m_handle;
         if (m_handle != HandlePosition::None) {
             // Clicked a resize handle
             m_start_zoom_pos = mousePos;
@@ -561,24 +562,32 @@ Shape* DrawingCanvas::getSelectedShape(const QPointF& point) {
         return nullptr;
 
     if (m_shapes.size() == 1 && m_shapes.front()->contains(point)) {
-        m_select_shape_it = m_shapes.begin();
+        m_select_shape_it = m_shapes.end();
         return m_shapes.front().get();
     }
-
     auto lastIt = std::prev(m_shapes.end());
     m_select_shape_it = m_shapes.end();
-    for (auto it = m_shapes.begin(); it != m_shapes.end(); ++it) {
+
+    for (auto it = m_shapes.rbegin(); it != m_shapes.rend(); ++it) {
         Shape* shape = it->get();
         if (shape->contains(point)) {
-            /* 
-            - Identify a shape under the cursor;
-            - bring in front the selected shape;
-            */
-            if (it != lastIt) {
-                m_select_shape_it = it;
-                std::swap(*it, *lastIt);
+
+            // Convert reverse iterator to standard forward iterator
+            auto currentIt = std::prev(it.base());
+
+            // Z-ordering, bring shape to front (end of list)
+            if (currentIt != lastIt) {
+                // using std::splice prevents deep copy :)
+                m_select_shape_it = currentIt;
+                m_original_next_it = std::next(currentIt);
+                m_shapes.splice(m_shapes.end(), m_shapes, currentIt);
+                //qDebug() << "m_shapes got spliced";
+                return m_select_shape_it->get();
             }
-            return shape;
+            else {
+                //qDebug() << "last shape..";
+                return lastIt->get();
+            }
         }
     }
     return nullptr;

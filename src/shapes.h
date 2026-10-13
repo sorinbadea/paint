@@ -13,7 +13,7 @@ constexpr double EPSILON = 1.0; // Tolerance for point-on-line checks
 constexpr qreal handle_size = 8.0;
 constexpr qreal hit_padding = 4.0;
 constexpr qreal min_radius = 4.0;
-constexpr qreal tollerance_radius = 6.0;
+constexpr qreal tollerance_radius = 10.0;
 
 enum class ShapeType : uint8_t {
     Line = 1,
@@ -25,7 +25,7 @@ enum class ShapeType : uint8_t {
 };
 
 enum HandlePosition : uint8_t {
-    None,
+    None = 0,
     TopCenter,
     BottomCenter,
     LeftCenter,
@@ -40,11 +40,28 @@ enum DrawingMode : uint8_t {
     Final
 };
 
+enum class ArrowBasePoint : uint8_t {
+    Dot,
+    SolidRectangle,
+};
+
+/* line edges, tip and base */
+enum class ArrowEndPoint : uint8_t {
+    SolidArrow,
+    EmptyArrow,
+};
+
+typedef struct {
+    std::optional<ArrowBasePoint> basePoint;
+    std::optional<ArrowEndPoint>  endPoint;
+} endpoint_t;
+
 typedef struct {
     std::optional<QColor> line_color;
     std::optional<QColor> brush_color;
     std::optional<Qt::PenStyle> pen_style;
     std::optional<int> pen_width;
+    std::optional<endpoint_t> endpoint;
 } drawing_properties_t;
 
 typedef struct {
@@ -148,6 +165,9 @@ public:
 private:
     //coordinates
     QLineF m_line;
+    endpoint_t m_endpoint;
+    void drawArrowEndpoints(QPainter &painter) const;
+    void drawBaseEndpoints(QPainter &painter) const;
 };
 
 class CircleShape : public Shape {
@@ -258,7 +278,11 @@ public:
 
 private:
     //coordinates
-    mutable QPointF m_startPoint, m_endPoint, m_centerPoint;
+    mutable QPointF m_chordMid;
+    mutable double m_h, m_R, m_aStart, m_aMid, m_aEnd, m_d;
+    mutable QPointF m_dir, m_normal, m_pMid, m_center;
+    mutable QPointF m_startPoint, m_endPoint;
+    mutable QLineF m_chordLine;
     void drawArc(QPainter &painter, const QPen& pencil, DrawingMode dm) const;
     void drawHandle(QPainter& painter, const QPointF& pt, const QString& label, bool isDragging) const;
 };

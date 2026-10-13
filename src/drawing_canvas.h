@@ -109,6 +109,7 @@ private:
 
     // store the position in the list of shapes of the selected shape
     std::list<std::unique_ptr<Shape>>::iterator m_select_shape_it;
+    std::list<std::unique_ptr<Shape>>::iterator m_original_next_it;
 
     // list of existing shapes, used when paintEvent is called
     std::list<std::unique_ptr<Shape>> m_shapes;

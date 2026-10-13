@@ -89,10 +89,11 @@ private:
         QFont font = contextMenu.font();
         font.setPointSize(13);
         contextMenu.setFont(font);
-    
+
         Shape* shape = m_canvas->isShapeSelected();
 
         if (shape != nullptr) {
+
             // the sape is selected
             QAction *copy_action = contextMenu.addAction("Clone");
             connect(copy_action, &QAction::triggered, this, [this]() {m_canvas->cloneShape();});
@@ -111,6 +112,10 @@ private:
             // add a sub-menu for different line styles
             connectPenStyleSubmenu(contextMenu, font);
             connectPenWidthSubmenu(contextMenu, font);
+            if (shape->type() == ShapeType::Line) {
+                connectLineEndPointSubmenu(contextMenu, font);
+                connectLineBasePointSubmenu(contextMenu, font);
+            }
 
             QAction* penColorAction = colorPick(&contextMenu, "Pen Color", createPencilIcon, Qt::white, [this](const QColor& c) {
                 drawing_properties_t data;
@@ -123,7 +128,7 @@ private:
             if (shape->type() == ShapeType::Circle
                 || shape->type() == ShapeType::Rectangle
                 || shape->type() == ShapeType::Polygon) {
-                // only for thos shapes makes sens to fill them
+                // add brush color picker for those shapes
                 QAction* brushColorAction = colorPick(&contextMenu, "Brush Color", createPencilIcon, Qt::white, [this](const QColor& c) {
                     drawing_properties_t data;
                     data.brush_color = c;
@@ -283,6 +288,89 @@ private:
                 update(); // Repaint canvas with updated style
             });
         }
+    }
+
+    void connectLineEndPointSubmenu(QMenu& contextMenu, const QFont& font) {
+        //set-up the Pen Style sub menu
+        QMenu* subMenu = contextMenu.addMenu(tr("End Point"));
+        subMenu->setStyleSheet("QMenu::icon { width: 48px; height: 20px; }");
+        subMenu->setFont(font);
+
+        QAction* actNone = subMenu->addAction("None");
+        //act->setIcon(createLinePreviewIcon(Qt::SolidLine, width, QSize(48, 20), Qt::black));
+        // Mark currently active style as checked
+        actNone->setCheckable(true);
+        actNone->setIconVisibleInMenu(true);
+        // Handle selection
+        connect(actNone, &QAction::triggered, this, [this]() {
+            drawing_properties_t data;
+            data.endpoint = std::nullopt;
+            m_canvas->setDrawingProperties(data);
+            update(); // Repaint canvas with updated style
+        });
+
+        // Set the solid arrow tip
+        QAction* solidArrowAction = subMenu->addAction("Solid Arrow");
+        solidArrowAction->setIcon(createArrowPreviewIcon(QSize(56, 56), Qt::black, ArrowEndPoint::SolidArrow));
+        // Mark currently active style as checked
+        solidArrowAction->setCheckable(true);
+        solidArrowAction->setIconVisibleInMenu(true);
+        // Handle selection
+        connect(solidArrowAction, &QAction::triggered, this, [this]() {
+            drawing_properties_t data;
+            data.endpoint.emplace().endPoint = ArrowEndPoint::SolidArrow;
+            m_canvas->setDrawingProperties(data);
+            update(); // Repaint canvas with updated style
+        });
+
+        // Set the empty arrow tip
+        QAction* emptyArrowAction = subMenu->addAction("Empty Arrow");
+        emptyArrowAction->setIcon(createArrowPreviewIcon(QSize(56, 56), Qt::black, ArrowEndPoint::EmptyArrow));
+        // Mark currently active style as checked
+        emptyArrowAction->setCheckable(true);
+        emptyArrowAction->setIconVisibleInMenu(true);
+        // Handle selection
+        connect(emptyArrowAction, &QAction::triggered, this, [this]() {
+            drawing_properties_t data;
+            data.endpoint.emplace().endPoint = ArrowEndPoint::EmptyArrow;
+            m_canvas->setDrawingProperties(data);
+            update(); // Repaint canvas with updated style
+        });
+
+    }
+
+    void connectLineBasePointSubmenu(QMenu& contextMenu, const QFont& font) {
+        //set-up the Pen Style sub menu
+        QMenu* subMenu = contextMenu.addMenu(tr("Base Point"));
+        subMenu->setStyleSheet("QMenu::icon { width: 48px; height: 20px; }");
+        subMenu->setFont(font);
+
+        QAction* actNone = subMenu->addAction("None");
+        //act->setIcon(createLinePreviewIcon(Qt::SolidLine, width, QSize(48, 20), Qt::black));
+        // Mark currently active style as checked
+        actNone->setCheckable(true);
+        actNone->setIconVisibleInMenu(true);
+        // Handle selection
+        connect(actNone, &QAction::triggered, this, [this]() {
+            drawing_properties_t data;
+            data.endpoint = std::nullopt;
+            m_canvas->setDrawingProperties(data);
+            update(); // Repaint canvas with updated style
+        });
+
+        // Attach the QLineF preview icon for this pen style
+        QAction* actBase = subMenu->addAction("Rectangle");
+        actBase->setIcon(createRectanglePreviewIcon(QSize(48, 20), Qt::black));
+        // Mark currently active style as checked
+        actBase->setCheckable(true);
+        actBase->setIconVisibleInMenu(true);
+        // Handle selection
+        connect(actBase, &QAction::triggered, this, [this]() {
+            drawing_properties_t data;
+            data.endpoint.emplace().basePoint = ArrowBasePoint::SolidRectangle;
+            m_canvas->setDrawingProperties(data);
+            update(); // Repaint canvas with updated style
+        });
     }
 
     void createMenus() {

@@ -14,6 +14,7 @@ It allows the following operations:
   - clone a selectes shape (Copy/Paste)
   - change the background or the foreground color of a shape
   - change the pen width, pen style, pen color and brush color
+  - For the line shape set the start point and the end-point (e.g. a small solid rectangle and/or a small arrow tip)
 
 3. Group shapes
    By click and drag over shapes it is possible to group them and perform the
@@ -29,5 +30,4 @@ Remark:
 -some parts of the code were written using Google Gemini AI
 
 ![App Screenshot](./screenshots/Screenshot2.png)
-![App Screenshot](./screenshots/screenshot1.png)
 
