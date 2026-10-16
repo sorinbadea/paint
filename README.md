@@ -1,11 +1,11 @@
 This is a simple vectorial drawing app written in C++/QT
 It allows the following operations:
 
-1. Draw a Line, Rectangle, Circle, Arc or Polygons
+1. Draw a Line, Rectangle, Circle, Arc or Polygon
 
 2. Shape Selection
   Once the user clicks with the mouse inside a Shape he has the following options:
-  - select drag the shape
+  - select and drag the shape
   - resize vertically or horizontally by pulling one of the 4 hooks
     (works for Circle/Ellipse, Rectangle and Polygon)
     (the same action for the Line shape it allows to rotate the line)
@@ -20,7 +20,7 @@ It allows the following operations:
    By click and drag over shapes it is possible to group them and perform the
    following actions on them together:
   - drag the whole group
-  - ZoomIn ZoomOut using the wheel
+  - Zoom in zoom out using the wheel
   - Clone the whole group
 
 4. Persistency

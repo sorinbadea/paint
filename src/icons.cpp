@@ -36,7 +36,9 @@ QIcon createRectangleIcon(unsigned size) {
     painter.setPen(QPen(Qt::red, 2.5));
     painter.setBrush(Qt::NoBrush);
     painter.drawRect(5, 5, size - 10, size -10);
-    painter.end();
+    if (!painter.end()) {
+        qDebug() << "Painting failed!";
+    }
     // 5. Wrap the QPixmap into a QIcon
     return QIcon(pixmap);
 }
@@ -61,7 +63,9 @@ QIcon createPolygonIcon() {
     
     // Draws both fill and border outline
     painter.drawPolygon(polygon);
-    painter.end();
+    if (!painter.end()) {
+        qDebug() << "Painting failed!";
+    }
     return QIcon(pixmap);
 }
 
@@ -146,7 +150,9 @@ QIcon createPencilIcon(const QColor &color) {
     painter.setBrush(QColor("#EC4899")); // Pink eraser
     painter.drawPolygon(eraser);
 
-    painter.end();
+    if (!painter.end()) {
+        qDebug() << "Painting failed!";
+    }
     return QIcon(pixmap);
 }
 
@@ -213,7 +219,9 @@ QIcon createBrushIcon(const QColor &fillColor) {
     painter.setBrush(fillColor);
     painter.drawPath(dropPath);
 
-    painter.end();
+    if (!painter.end()) {
+        qDebug() << "Painting failed!";
+    }
 
     // 2. Wrap and return as QIcon
     return QIcon(pixmap);
@@ -289,7 +297,9 @@ QIcon createArcToolIcon(const QColor& iconColor, const QSize& iconSize) {
     //painter.drawEllipse(QPointF(5.0, 18.0), 2.5, 2.5);
     //painter.drawEllipse(QPointF(27.0, 18.0), 2.5, 2.5);
 
-    painter.end();
+    if (!painter.end()) {
+        qDebug() << "Painting failed!";
+    }
     return QIcon(pixmap);
 }
 
@@ -361,8 +371,9 @@ QIcon createArrowPreviewIcon(const QSize& iconSize, const QColor& color, const A
     else if (arrow_style == ArrowEndPoint::EmptyArrow)
         painter.setBrush(Qt::transparent);
     painter.drawPolygon(arrowHead);
-    painter.end();
-
+    if (!painter.end()) {
+        qDebug() << "Painting failed!";
+    }
     return QIcon(pixmap);
 }
 
@@ -404,8 +415,9 @@ QIcon createRectanglePreviewIcon(const QSize& iconSize, const QColor& color) {
     painter.setBrush(color);
     painter.drawRect(localRect);
     painter.restore();
-    painter.end();
-
+    if (!painter.end()) {
+        qDebug() << "Painting failed!";
+    }
     return QIcon(pixmap);
 }
 

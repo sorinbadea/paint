@@ -14,6 +14,12 @@ Shape::Shape(QPen pen, QBrush brush) :
     m_hook_brush(QBrush(Qt::white, Qt::SolidPattern)) {
 }
 
+void Shape::toolHint(const QPoint &point, const QString& explanation) {
+    // Display the tooltip near the cursor
+    // Parameters: pos, text, widget parent, rect boundary, duration in ms
+    QToolTip::showText(point + QPoint(10, 10), explanation, nullptr, QRect(), 2000);
+}
+
 // ========================== LINE SHAPE ==========================
 LineShape::LineShape(const QLineF &line, const QPen &pen, const QBrush& brush)
     : Shape(pen, brush), m_line(line) {}
@@ -141,11 +147,42 @@ ShapeType LineShape::type() const {
 }
 
 void LineShape::serialize(QDataStream &out) const {
-    out << m_line << m_pen; // QDataStream natively supports Qt types!
+    out << m_line << m_pen;
+    // Serialize basePoint if it exists
+    out << m_endpoint.basePoint.has_value();
+    if (m_endpoint.basePoint) {
+        out << static_cast<quint8>(*m_endpoint.basePoint);
+    }
+
+    // Serialize endPoint if it exists
+    out << m_endpoint.endPoint.has_value();
+    if (m_endpoint.endPoint) {
+        out << static_cast<quint8>(*m_endpoint.endPoint);
+    }
 }
 
 void LineShape::deserialize(QDataStream &in) {
     in >> m_line >> m_pen;
+    // Deserialize basePoint, if exists
+    bool hasBase = false;
+    in >> hasBase;
+    if (hasBase) {
+        quint8 val = 0;
+        in >> val;
+        m_endpoint.basePoint = static_cast<ArrowBasePoint>(val);
+    } else {
+        m_endpoint.basePoint.reset();
+    }
+    // Deserialize endPoint, if exists
+    bool hasEnd = false;
+    in >> hasEnd;
+    if (hasEnd) {
+        quint8 val = 0;
+        in >> val;
+        m_endpoint.endPoint = static_cast<ArrowEndPoint>(val);
+    } else {
+        m_endpoint.endPoint.reset();
+    }
 }
 
 bool LineShape::contains(const QPointF &point) const{
@@ -224,12 +261,6 @@ void LineShape::zoomInOut(const qreal& factor) {
     // Scale vectors from center to endpoints
     m_line.setP1(center + (m_line.p1() - center) * factor);
     m_line.setP2(center + (m_line.p2() - center) * factor);
-}
-
-void LineShape::toolHint(const QPoint &point, const QString& explanation) {
-    // Display the tooltip near the cursor
-    // Parameters: pos, text, widget parent, rect boundary, duration in ms
-    QToolTip::showText(point + QPoint(10, 10), explanation, nullptr, QRect(), 2000);
 }
 
 HandlePosition LineShape::hookTest(const QPointF& pt) const {
@@ -405,12 +436,6 @@ void RectangleShape::zoomInOut(const qreal& factor) {
     qreal newHeight = m_rectangle.height() * factor;
     m_rectangle.setSize(QSizeF(newWidth, newHeight));
     m_rectangle.moveCenter(center);
-}
-
-void RectangleShape::toolHint(const QPoint &point, const QString& explanation) {
-    // Display the tooltip near the cursor
-    // Parameters: pos, text, widget parent, rect boundary, duration in ms
-    QToolTip::showText(point + QPoint(10, 10), explanation, nullptr, QRect(), 2000);
 }
 
 // Rectangle hook checker
@@ -628,12 +653,6 @@ void CircleShape::resizeShape(const QPointF &delta, const HandlePosition hp) {
 void CircleShape::zoomInOut(const qreal& factor) {
     m_radius_x = m_radius_x * factor;
     m_radius_y = m_radius_y * factor;
-}
-
-void CircleShape::toolHint(const QPoint &point, const QString& explanation) {
-    // Display the tooltip near the cursor
-    // Parameters: pos, text, widget parent, rect boundary, duration in ms
-    QToolTip::showText(point + QPoint(10, 10), explanation, nullptr, QRect(), 2000);
 }
 
 HandlePosition CircleShape::hookTest(const QPointF& pt) const {
@@ -860,12 +879,6 @@ void PolygonShape::zoomInOut(const qreal& factor) {
     transform.scale(factor, factor);             // Scale
     transform.translate(-center.x(), -center.y()); // Shift back
     m_points = transform.map(m_points);
-}
-
-void PolygonShape::toolHint(const QPoint &point, const QString& explanation) {
-    // Display the tooltip near the cursor
-    // Parameters: pos, text, widget parent, rect boundary, duration in ms
-    QToolTip::showText(point + QPoint(10, 10), explanation, nullptr, QRect(), 2000);
 }
 
 HandlePosition PolygonShape::hookTest(const QPointF& pt) const {
@@ -1171,12 +1184,6 @@ void ArcShape::zoomInOut(const qreal& factor) {
     m_startPoint = m_center + (m_startPoint - m_center) * factor;
     // Scale end point relative to centerPoint
     m_endPoint = m_center + (m_endPoint - m_center) * factor;
-}
-
-void ArcShape::toolHint(const QPoint &point, const QString& explanation) {
-    // Display the tooltip near the cursor
-    // Parameters: pos, text, widget parent, rect boundary, duration in ms
-    QToolTip::showText(point + QPoint(10, 10), explanation, nullptr, QRect(), 2000);
 }
 
 HandlePosition ArcShape::hookTest(const QPointF& clickPos) const {

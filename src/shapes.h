@@ -128,12 +128,11 @@ public:
     // zoom in zoom out
     virtual void zoomInOut(const qreal& factor) = 0;
 
-    // tool tip
-    virtual void toolHint(const QPoint &point, const QString& explanation) = 0;
-
     // seralize, de-serialize
     virtual void serialize(QDataStream &out) const = 0;
     virtual void deserialize(QDataStream &in) = 0;
+
+    void toolHint(const QPoint &point, const QString& explanation);
 };
 
 // -------------------------------------------------------------
@@ -158,7 +157,6 @@ public:
     void moveRelative(const QPointF &delta) override;
     void resizeShape(const QPointF &delta, const HandlePosition hp) override;
     void zoomInOut(const qreal& factor) override;
-    void toolHint(const QPoint &point, const QString& explanation) override;
     void serialize(QDataStream &out) const override;
     void deserialize(QDataStream &in) override;
 
@@ -188,7 +186,6 @@ public:
     void resizeShape(const QPointF &delta, const HandlePosition hp) override;
     void moveRelative(const QPointF &delta) override;
     void zoomInOut(const qreal& factor) override;
-    void toolHint(const QPoint &point, const QString& explanation) override;
     void serialize(QDataStream &out) const override;
     void deserialize(QDataStream &in) override;
 
@@ -217,7 +214,6 @@ public:
     void moveRelative(const QPointF &delta) override;
     void resizeShape(const QPointF &delta, const HandlePosition hp) override;
     void zoomInOut(const qreal& factor) override;
-    void toolHint(const QPoint &point, const QString& explanation) override;
     void serialize(QDataStream &out) const override;
     void deserialize(QDataStream &in) override;
 
@@ -245,7 +241,6 @@ public:
     void moveRelative(const QPointF &delta) override;
     void resizeShape(const QPointF &delta, const HandlePosition hp) override;
     void zoomInOut(const qreal& factor) override;
-    void toolHint(const QPoint &point, const QString& explanation) override;
     void serialize(QDataStream &out) const override;
     void deserialize(QDataStream &in) override;
 
@@ -272,7 +267,6 @@ public:
     void moveRelative(const QPointF &delta) override;
     void resizeShape(const QPointF &delta, const HandlePosition hp) override;
     void zoomInOut(const qreal& factor) override;
-    void toolHint(const QPoint &point, const QString& explanation) override;
     void serialize(QDataStream &out) const override;
     void deserialize(QDataStream &in) override;
 
