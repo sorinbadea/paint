@@ -132,6 +132,7 @@ public:
     virtual void serialize(QDataStream &out) const = 0;
     virtual void deserialize(QDataStream &in) = 0;
 
+    // context help
     void toolHint(const QPoint &point, const QString& explanation);
 };
 
