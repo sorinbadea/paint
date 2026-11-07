@@ -1,7 +1,7 @@
 This is a simple vectorial drawing app written in C++/QT
 It allows the following operations:
 
-1. Draw a Line, Rectangle, Circle, Arc or Polygon
+1. Draw a Line, Rectangle, Circle, Arc, Polygon and Text
 
 2. Shape Selection
   Once the user clicks with the mouse inside a Shape he has the following options:

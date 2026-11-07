@@ -128,10 +128,10 @@ void DrawingCanvas::finalizeShape(std::optional<QPointF> const&  point) {
        - add the shape to existing shapes
        - handle the grouping case
     */
-    logging(std::move(std::string{"finalize shape"}));
     assert(m_shape);
     // reset drawing flag
     m_isDrawing = false;
+    logging(std::move(std::string{"finalize shape"}));
 
     if (m_grouping) {
         // build the rectangle to group several shapes
@@ -303,6 +303,13 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
         QWidget::mousePressEvent(event); // Call base class if right-click or middle-click
         return;
     }
+
+    if (m_active_text && !m_active_text->geometry().contains(event->pos())) {
+        // Forcefully trigger focus loss (which will fire your eventFilter commit logic)
+        m_active_text->clearFocus();
+        return; 
+    }
+
     logging("Mouse press event");
     const QPointF mousePos = event->position();
     // Group Dragging
@@ -318,7 +325,7 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
     // Shape Manipulation (Resize or Move)
     if (m_selected_shape) {
         m_handle = m_selected_shape->hookTest(mousePos);
-        // qDebug() << "Hook test:" << m_handle;
+        qDebug() << "Hook test:" << m_handle;
         if (m_handle != HandlePosition::None) {
             // Clicked a resize handle
             m_start_zoom_pos = mousePos;
@@ -352,6 +359,10 @@ void DrawingCanvas::mousePressEvent(QMouseEvent *event) {
             globalPos,
             QStringLiteral("Use the wheel to zoom-in zoom-out, click right for more actions")
         );
+        // TODO, fix it
+        //if (m_selected_shape->type() == ShapeType::Text) {
+        //    openTextEditorForShape(static_cast<TextShape*>(m_selected_shape), m_start_pos);
+        //}
         update();
         event->accept();
     }
@@ -386,10 +397,23 @@ void DrawingCanvas::mouseMoveEvent(QMouseEvent *event) {
      } else if (m_selected_shape != nullptr) {
         // Check for shape hooks click
         if (hookSelected(m_handle)) {
-            // one of the four hooks clicked
+            // one of the hooks clicked
             QPointF delta = (event->position() - m_start_zoom_pos);
             // ask for Shape coordinates re-computation
-            m_selected_shape->resizeShape(delta, m_handle);
+            // TODO integrate with resizeShape(), avoid consider TextShape!
+            TextShape* text_shape = dynamic_cast<TextShape*>(m_selected_shape);
+            if (text_shape) {
+                QPointF center = text_shape->m_rect.center();
+                // Define vectors relative to the shape's center pivot
+                QPointF startVector =  m_start_zoom_pos - center;
+                QPointF currentVector = event->position() - center;
+                double deltaDegrees = computeRotationAngle(startVector, currentVector);
+                text_shape->setRotationAngle(deltaDegrees);
+            }
+            else {
+                // other shape, Line, Circle, Rectangle
+                m_selected_shape->resizeShape(delta, m_handle);
+            }
             m_start_zoom_pos = event->position();
         }
         else {
@@ -432,21 +456,22 @@ void DrawingCanvas::mouseReleaseEvent(QMouseEvent *event)  {
             std::move(QString("Use the wheel to zoom-in zoom-out, click right for more actions")));
     }
     // Drawing or grouping case
-    else if (m_isDrawing) {
-        if (oneShotShape()) {
-            assert(m_shape);
-             // Line, Rectangle, Circle, Arc and the grouping rectangle
-            m_current_pos = event->position();
-            // check if the Shape is big enough
-            QPointF delta = m_current_pos - m_start_pos;
-            qreal distanceSquared = delta.x() * delta.x() + delta.y() * delta.y();
-            if (distanceSquared >= (QApplication::startDragDistance() * QApplication::startDragDistance())) {
-                // Store the new shape, including the grouping one
-                finalizeShape(event->position());
-            }
-            else
-                // !the shape is too small
-                m_shape.reset();
+    else if (m_isDrawing && oneShotShape()) {
+        assert(m_shape);
+        // Line, Rectangle, Circle, Arc and the grouping rectangle
+        m_current_pos = event->position();
+        // check if the Shape is big enough
+        QPointF delta = m_current_pos - m_start_pos;
+        qreal distanceSquared = delta.x() * delta.x() + delta.y() * delta.y();
+        if (m_mode == ToolMode::Text ||
+            distanceSquared >= (QApplication::startDragDistance() * QApplication::startDragDistance())) {
+            // Store the new shape, including the text and the grouping
+            qDebug() << "finalize shape !";
+            finalizeShape(event->position());
+        }
+        else {
+            // !the shape is too small
+            m_shape.reset();
         }
     }
     else if (m_shape && m_grouping) {
@@ -536,10 +561,19 @@ void DrawingCanvas::drawingMode(const QMouseEvent *event) {
         m_shape->addPoint(m_start_pos);
         break;
     }
+
+    case ToolMode::Text: {
+        m_isDrawing = false;
+        m_shape = std::make_unique<TextShape>(pencil);
+        openTextEditorForShape(static_cast<TextShape*>(m_shape.get()), event->position());
+        break;
+    }
+
     case ToolMode::Arc: {
         m_shape = std::make_unique<ArcShape>(pencil, brush);
         break;
     }
+
     case ToolMode::Group: {
         const QRectF rect(m_start_pos, m_current_pos);
         const QPen groupPen(Qt::darkGray, 2, Qt::DashLine);
@@ -549,6 +583,7 @@ void DrawingCanvas::drawingMode(const QMouseEvent *event) {
         qDebug() << "Grouping selection started.";
         break;
     }
+
     default:
         m_isDrawing = false;
         qWarning() << "Mouse press event: unknown drawing mode" << static_cast<int>(m_mode);
@@ -649,6 +684,9 @@ bool DrawingCanvas::loadFromFile(const QString &filePath) {
             case ShapeType::Arc:
                 shape = std::make_unique<ArcShape>();
                 break;
+            case ShapeType::Text:
+                shape = std::make_unique<TextShape>();
+                break;
             default:
                 // Unknown shape type encountered in file
                 return false;
@@ -679,6 +717,7 @@ bool DrawingCanvas::hookSelected(const HandlePosition handle) const {
 void DrawingCanvas::logging(const std::string& message) {
     qDebug() << message << "- drawing" << m_isDrawing << "- grouping" << m_grouping <<
         "grouped shapes" << m_group_shapes.size() << "-" <<
+        "nb of shapes" << m_shapes.size() << "-" <<
         (m_shape == nullptr ? "shape not defined" : "new shape defined") << "-" <<
         (m_selected_shape != nullptr ? "shape selected" : "shape not selected ");
 }
@@ -689,6 +728,7 @@ bool DrawingCanvas::oneShotShape() const {
          || m_mode == ToolMode::Rectangle
          || m_mode == ToolMode::Arc
          || m_mode == ToolMode::Group
+         || m_mode == ToolMode::Text
     );
 }
 
@@ -698,8 +738,90 @@ bool DrawingCanvas::drawingShape() const {
          || m_mode == ToolMode::Rectangle
          || m_mode == ToolMode::Arc
          || m_mode == ToolMode::Polygon
+         || m_mode == ToolMode::Text
          || m_mode == ToolMode::Group
     );
 }
 
+void DrawingCanvas::openTextEditorForShape(TextShape* shape, const QPointF& position) {
+    assert(shape);
+    // If an editor is already open elsewhere, clean it up first
+    if (m_active_text) {
+        m_active_text->deleteLater();
+    }
+    m_active_text = new QLineEdit(this);
+    QFont editFont = m_active_text->font();
+    editFont.setPointSize(14);
+    m_active_text->setFont(editFont);
+    shape->m_rect = QRectF(position, QSizeF(text_width, text_height));
+    m_active_text->setGeometry(shape->m_rect.toRect());
+    m_active_text->setStyleSheet(
+        "QLineEdit {"
+        "   color: blue;"
+        "   background-color: white;"
+        "   border: 2px solid red;"  // Correct order: width, style, color
+        "   padding: 2px 2px;"
+        "}"
+    );
+    m_active_text->installEventFilter(this);
+    m_active_text->setFocus();
+    m_active_text->show();
+    update(); // Redraw canvas to hide the shape
+}
+
+bool DrawingCanvas::eventFilter(QObject *watched, QEvent *event) {
+
+    // Check if the event belongs to our active line edit and is a FocusOut event
+    if (watched == m_active_text) {
+        if (event->type() == QEvent::KeyPress) {
+            QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+            if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
+                // Clear focus, which immediately triggers the QEvent::FocusOut block below!
+                m_active_text->clearFocus();
+                return true; // Handled
+            }
+        }
+        if (event->type() == QEvent::FocusOut) {
+            if (!m_shape) {
+                return true;
+            }
+            assert(m_shape);
+            m_shape->m_text = m_active_text->text();
+            // Clean up the temporary widget
+            m_active_text->deleteLater();
+            m_active_text = nullptr;
+            // resize the TextShape based on the text length
+            m_shape.get()->zoomInOut(1.0);
+            m_shapes.push_back(std::move(m_shape));
+            update(); // Redraw canvas
+            return true;
+        }
+    }
+    // Pass all other unhandled events to the base class
+    return QWidget::eventFilter(watched, event);
+}
+
+double computeRotationAngle(QPointF startVector, QPointF endVector) {
+    // AI generated
+    // 1. Guard against zero-length vectors (prevents NaN and erratic jumping near the center)
+    if ((qFuzzyIsNull(startVector.x()) && qFuzzyIsNull(startVector.y())) ||
+        (qFuzzyIsNull(endVector.x()) && qFuzzyIsNull(endVector.y()))) {
+        return 0.0;
+    }
+
+    // 2. Calculate angles in radians using atan2
+    double startAngle = std::atan2(startVector.y(), startVector.x());
+    double endAngle = std::atan2(endVector.y(), endVector.x());
+
+    // 3. Compute raw delta
+    double deltaRadians = endAngle - startAngle;
+
+    // 4. Normalize delta to [-π, π] to prevent sudden 360-degree wrapping jumps when crossing the seam
+    const double TWO_PI = 2.0 * M_PI;
+    while (deltaRadians > M_PI)  deltaRadians -= TWO_PI;
+    while (deltaRadians < -M_PI) deltaRadians += TWO_PI;
+
+    // 5. Convert to degrees
+    return qRadiansToDegrees(deltaRadians);
+}
 

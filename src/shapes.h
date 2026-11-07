@@ -2,12 +2,16 @@
 #define SHAPES_H
 
 #include <iostream>
+#include <QLineEdit>
 #include <QString>
 #include <QApplication>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPen>
 #include <QBrush>
+#include <QPointF>
+
+class DrawingCanvas;
 
 constexpr double EPSILON = 1.0; // Tolerance for point-on-line checks
 constexpr qreal handle_size = 8.0;
@@ -21,6 +25,7 @@ enum class ShapeType : uint8_t {
     Rectangle = 3,
     Polygon = 4,
     Arc = 5,
+    Text = 6,
     None
 };
 
@@ -62,6 +67,7 @@ typedef struct {
     std::optional<Qt::PenStyle> pen_style;
     std::optional<int> pen_width;
     std::optional<endpoint_t> endpoint;
+    std::optional<bool> bold_text;
 } drawing_properties_t;
 
 typedef struct {
@@ -91,6 +97,7 @@ protected:
     QBrush m_hook_brush;
 
 public:
+    QString m_text;
     Shape() = default;
     Shape(QPen pen, QBrush brush);
     virtual ~Shape() = default;
@@ -282,4 +289,35 @@ private:
     void drawHandle(QPainter& painter, const QPointF& pt, const QString& label, bool isDragging) const;
 };
 
+class TextShape : public Shape {
+public:
+    TextShape() = default;
+    TextShape(const QPen &pen);
+    std::unique_ptr<Shape> clone() const override;
+    void draw(QPainter &painter) const override;
+    void draw(QPainter &painter, const ShapeData_t& shape_data) const override;
+    void drawSelect(QPainter &painter, const bool draw_hooks) const override;
+    ShapeType type() const override;
+    HandlePosition hookTest(const QPointF& pt) const override;
+    bool contains(const QPointF &point) const override;
+    void setShapeData(const ShapeData_t& shape_data) override;
+    void setDrawingProperties(const drawing_properties_t& dp) override;
+    void addPoint(const QPointF& p) override;
+    QPolygonF getPoints() override;
+    void moveRelative(const QPointF &delta) override;
+    void resizeShape(const QPointF &delta, const HandlePosition hp) override;
+    void zoomInOut(const qreal& factor) override;
+    void serialize(QDataStream &out) const override;
+    void deserialize(QDataStream &in) override;
+    void setRotationAngle(const double& rotation_angle);
+    //Text Shape framing rectangle
+    QRectF m_rect;
+    
+private:
+    mutable QFont  m_font;
+    QColor  m_color;
+    bool    m_bold;
+    double  m_rotation_angle;
+    QRectF  getHandleRect(const QPointF& center) const;
+};
 #endif

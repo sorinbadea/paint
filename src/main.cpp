@@ -109,41 +109,63 @@ private:
 
             contextMenu.addSeparator();
 
-            // add a sub-menu for different line styles
-            connectPenStyleSubmenu(contextMenu, font);
-            connectPenWidthSubmenu(contextMenu, font);
-            if (shape->type() == ShapeType::Line) {
-                connectLineEndPointSubmenu(contextMenu, font);
-                connectLineBasePointSubmenu(contextMenu, font);
-            }
+            if (shape->type() == ShapeType::Text) {
+                QAction* textColorAction = colorPick(&contextMenu, "Text Color", createPencilIcon, Qt::white, [this](const QColor& c) {
+                    drawing_properties_t data;
+                    data.line_color = c;
+                    m_canvas->setDrawingProperties(data);
+                });
+                contextMenu.addAction(textColorAction);
 
-            QAction* penColorAction = colorPick(&contextMenu, "Pen Color", createPencilIcon, Qt::white, [this](const QColor& c) {
+                // Add the normal text menu
                 drawing_properties_t data;
-                data.line_color = c;
-                m_canvas->setDrawingProperties(data);
-            });
-            // Add action to context menu
-            contextMenu.addAction(penColorAction);
+                QAction *action_normal_text = contextMenu.addAction("Normal");
+                data.bold_text = false;
+                connect(action_normal_text, &QAction::triggered, this, [this, data]() {m_canvas->setDrawingProperties(data);});
 
-            if (shape->type() == ShapeType::Circle
-                || shape->type() == ShapeType::Rectangle
-                || shape->type() == ShapeType::Polygon) {
-                // add brush color picker for those shapes
-                QAction* brushColorAction = colorPick(&contextMenu, "Brush Color", createPencilIcon, Qt::white, [this](const QColor& c) {
+                // Add bold text menu
+                QAction *action_bold_text = contextMenu.addAction("Bold");
+                data.bold_text = true;
+                connect(action_bold_text, &QAction::triggered, this, [this, data]() {m_canvas->setDrawingProperties(data);});
+            }
+            else {
+
+                QAction* penColorAction = colorPick(&contextMenu, "Pen Color", createPencilIcon, Qt::white, [this](const QColor& c) {
                     drawing_properties_t data;
-                    data.brush_color = c;
+                    data.line_color = c;
                     m_canvas->setDrawingProperties(data);
                 });
                 // Add action to context menu
-                contextMenu.addAction(brushColorAction);
+                contextMenu.addAction(penColorAction);
 
-                QAction* transparentBrushAction = contextMenu.addAction("Transparent");               
-                // Add action to context menu
-                connect(transparentBrushAction, &QAction::triggered, this, [this]() {
-                    drawing_properties_t data;
-                    data.brush_color = Qt::NoBrush;
-                    m_canvas->setDrawingProperties(data);
-                });
+                // add a sub-menu for different line styles
+                connectPenStyleSubmenu(contextMenu, font);
+                connectPenWidthSubmenu(contextMenu, font);
+                if (shape->type() == ShapeType::Line) {
+                    connectLineEndPointSubmenu(contextMenu, font);
+                    connectLineBasePointSubmenu(contextMenu, font);
+                }
+
+                if (shape->type() == ShapeType::Circle
+                    || shape->type() == ShapeType::Rectangle
+                    || shape->type() == ShapeType::Polygon) {
+                    // add brush color picker for those shapes
+                    QAction* brushColorAction = colorPick(&contextMenu, "Brush Color", createPencilIcon, Qt::white, [this](const QColor& c) {
+                        drawing_properties_t data;
+                        data.brush_color = c;
+                        m_canvas->setDrawingProperties(data);
+                    });
+                    // Add action to context menu
+                    contextMenu.addAction(brushColorAction);
+
+                    QAction* transparentBrushAction = contextMenu.addAction("Transparent");               
+                    // Add action to context menu
+                    connect(transparentBrushAction, &QAction::triggered, this, [this]() {
+                        drawing_properties_t data;
+                        data.brush_color = Qt::NoBrush;
+                        m_canvas->setDrawingProperties(data);
+                    });
+                }
             }
         }
         else if (m_canvas->isGrouping()) {
@@ -482,6 +504,14 @@ private:
         });
         toolsMenu->addAction(arcAction);
 
+        // Arc option
+        //------------
+        QAction *textAction = new QAction("&Text mode", this);
+        connect(textAction, &QAction::triggered, this, [this]() {
+            m_canvas->setMode(ToolMode::Text);
+        });
+        toolsMenu->addAction(textAction);
+
         // Edit Menu
         //------------
         QMenu *editMenu = menuBar()->addMenu("&Edit");
@@ -610,7 +640,7 @@ private:
             m_canvas->setMode(ToolMode::Polygon);
         });
 
-        // 5. Add Polygon Action with custom icon
+        // 5. Add Arc Action with custom icon
         QAction *arcToolBarAction = new QAction(createArcToolIcon(), "Arc", this);
         arcToolBarAction->setCheckable(true);
         top_toolbar->addAction(arcToolBarAction);
@@ -619,7 +649,16 @@ private:
             m_canvas->setMode(ToolMode::Arc);
         });
 
-        // 6. Add Select Action with custom icon
+        // 6. Add Text shape option
+        QAction *textIconAction = new QAction(createAbIcon(), "Text", this);
+        textIconAction->setCheckable(true);
+        top_toolbar->addAction(textIconAction);
+        toolGroup->addAction(textIconAction);
+        connect(textIconAction, &QAction::triggered, this, [this]() {
+            m_canvas->setMode(ToolMode::Text);
+        });
+
+        // 7. Add Select Action with custom icon
         QAction *selectToolBarAction = new QAction(createSelectIcon(), "Select", this);
         selectToolBarAction->setCheckable(true);
         top_toolbar->addAction(selectToolBarAction);
@@ -628,7 +667,7 @@ private:
             m_canvas->setMode(ToolMode::Select);
         });
 
-        // 7. Add Group shapes option
+        // 8. Add Group shapes option
         QAction *groupToolBarAction = new QAction(createGroupIcon(), "Group", this);
         groupToolBarAction->setCheckable(true);
         top_toolbar->addAction(groupToolBarAction);

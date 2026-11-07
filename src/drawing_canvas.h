@@ -2,6 +2,7 @@
 #define DRAWINGCANVAS_H
 #include "shapes.h"
 #include <QToolTip>
+#include <QTextEdit>
 #include <QWidget>
 #include <QMouseEvent>
 #include <QPointF>
@@ -17,11 +18,13 @@ constexpr qreal clone_y_offset = 10.0;
 constexpr bool wo_hooks = false;
 constexpr bool w_hooks = true;
 const std::vector<int> preset_widths = {1, 2, 3, 4, 5, 7, 9, 11, 12};
+constexpr qreal text_width = 100.0;
+constexpr qreal text_height = 30.0;
 
 // -------------------------------------------------------------
 // 3. CANVAS WIDGET
 // -------------------------------------------------------------
-enum class ToolMode { Line, Circle,  Rectangle, Polygon, Arc, Select, Group, None};
+enum class ToolMode { Line, Circle,  Rectangle, Polygon, Arc, Text, Select, Group, None};
 
 constexpr ShapeType getShapeType(ToolMode tm) noexcept;
 
@@ -61,6 +64,7 @@ protected:
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
     // paint grid
@@ -86,7 +90,11 @@ private:
     // Line, Rectangle, Circle, Arc or grouping (draw in one shot, except Polygon)
     bool oneShotShape() const;
 
+    // return true for drawing shapes
     bool drawingShape() const;
+
+    // open a QLineedir widget
+    void openTextEditorForShape(TextShape* shape, const QPointF& position);
 
     // Attributes
     // drawing mode, Circle, Line, Selection..
@@ -136,5 +144,10 @@ private:
 
     // zoom factor
     qreal m_zoom_factor;
+
+    // QT Text Editor
+    QLineEdit* m_active_text;
+    std::unique_ptr<Shape> m_currentEditingShape;
 };
+double computeRotationAngle(QPointF startVector, QPointF endVector);
 #endif // DRAWINGCANVAS_H

@@ -25,6 +25,7 @@ LineShape::LineShape(const QLineF &line, const QPen &pen, const QBrush& brush)
     : Shape(pen, brush), m_line(line) {}
 
 void LineShape::draw(QPainter &painter) const {
+    painter.save();
     painter.setPen(m_pen);
     painter.drawLine(m_line);
     // draw base point and line tip
@@ -34,17 +35,19 @@ void LineShape::draw(QPainter &painter) const {
     if (m_endpoint.basePoint.has_value()) {
         drawBaseEndpoints(painter);
     }
+    painter.restore();
 }
 
 void LineShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
     // working assumption
     assert(shape_data.start.has_value());
     assert(shape_data.end.has_value());
-
+    painter.save();
     QLineF line(*shape_data.start, *shape_data.end);
     painter.setPen(shape_data.pencil);
     painter.setBrush(shape_data.brush);
     painter.drawLine(line);
+    painter.restore();
 }
 
 void LineShape::drawSelect(QPainter &painter, const bool draw_hooks) const {
@@ -117,21 +120,18 @@ void LineShape::drawArrowEndpoints(QPainter &painter) const {
 }
 
 void LineShape::drawBaseEndpoints(QPainter &painter) const {
+    // 1. Save the current painter state
     painter.save();
-    // 1. Draw the main line shaft
-    painter.drawLine(m_line);
-    // 2. Save the current painter state
-    painter.save();
-    // 3. Move origin to p2 and rotate to match the line angle
+    // 2. Move origin to p2 and rotate to match the line angle
     painter.translate(m_line.p2());
     painter.rotate(m_line.angle());
     qreal rectLength, rectWidth;
     rectLength = rectWidth = m_pen.width()* 2.3;
-    // 4. Center the rectangle on the point (p2):
+    // 3. Center the rectangle on the point (p2):
     // - X-axis: -rectLength / 2.0 (straddles the point longitudinally)
     // - Y-axis: -rectWidth / 2.0 (straddles the line transversely)
     QRectF localRect(-rectLength / 2.0, -rectWidth / 2.0, rectLength, rectWidth);
-    // 5. Fill and draw the rectangle
+    // 4. Fill and draw the rectangle
     painter.setBrush(painter.pen().color());
     painter.drawRect(localRect);
     // 6. Restore the painter state
@@ -323,17 +323,17 @@ void RectangleShape::drawSelect(QPainter &painter, const bool draw_hooks) const 
     painter.setPen(m_shape_select_pencil);
     painter.setBrush(m_shape_select_brush);
     painter.drawRect(m_rectangle);
-    const QPointF topCenter(m_rectangle.center().x(), m_rectangle.top());
-    const QPointF bottomCenter(m_rectangle.center().x(), m_rectangle.bottom());
-    const QPointF leftCenter(m_rectangle.left(), m_rectangle.center().y());
-    const QPointF rightCenter(m_rectangle.right(), m_rectangle.center().y());
-    const QPointF handleCenters[] = {
-        topCenter,
-        bottomCenter,
-        leftCenter,
-        rightCenter
-    };
     if (draw_hooks) {
+        const QPointF topCenter(m_rectangle.center().x(), m_rectangle.top());
+        const QPointF bottomCenter(m_rectangle.center().x(), m_rectangle.bottom());
+        const QPointF leftCenter(m_rectangle.left(), m_rectangle.center().y());
+        const QPointF rightCenter(m_rectangle.right(), m_rectangle.center().y());
+        const QPointF handleCenters[] = {
+            topCenter,
+            bottomCenter,
+            leftCenter,
+            rightCenter
+        };
         painter.setPen(m_hook_pen);
         painter.setBrush(m_hook_brush);
         // draw hooking points around the shape
@@ -1209,4 +1209,198 @@ HandlePosition ArcShape::hookTest(const QPointF& clickPos) const {
     //    return HandlePosition::ApexPoint;
     //}
    return HandlePosition::None;
+}
+
+// ========================== TEXT SHAPE ==========================
+TextShape::TextShape(const QPen &pen) :
+    Shape(pen, Qt::NoBrush) {
+    m_font = QFont("Arial", 15, true);
+    m_bold = false;
+    m_rotation_angle = 0.0;
+    m_color = pen.color();
+}
+
+void TextShape::draw(QPainter &painter) const {
+    painter.save();
+    QPointF pivot = m_rect.center();
+    painter.translate(pivot);
+    painter.rotate(m_rotation_angle);
+    painter.translate(-pivot);
+    painter.setPen(m_color);
+    m_font.setBold(m_bold);
+    painter.setFont(m_font); // Apply the stored font
+    painter.drawText(m_rect, Qt::AlignLeft | Qt::AlignTop | static_cast<int>(Qt::TextWordWrap), m_text);
+    painter.restore();
+}
+
+void TextShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
+    painter.save();
+    QPointF pivot = m_rect.center();
+    painter.translate(pivot);
+    painter.rotate(m_rotation_angle);
+    painter.translate(-pivot);
+    painter.setFont(m_font); // Apply the stored font
+    painter.setPen(shape_data.pencil);
+    painter.drawText(m_rect, Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap, m_text);
+    painter.restore();
+}
+
+void TextShape::drawSelect(QPainter &painter, const bool draw_hooks) const {
+
+    painter.save();
+    QPointF pivot = m_rect.center();
+    painter.translate(pivot);
+    painter.rotate(m_rotation_angle);
+    painter.translate(-pivot);
+
+    // draw the text first
+    painter.setPen(m_shape_select_pencil);
+    painter.setFont(m_font);
+    // draw the box framing the text
+    if (draw_hooks)
+        painter.drawRect(m_rect);
+    painter.drawText(m_rect, Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap, m_text);
+
+    if (draw_hooks) {
+        //Draw the two small ellipses at the middle of the Left and Right sides
+        double handleRadius = 4.0; // Radius of the circle (8x8 pixels total size)
+        // Calculate center coordinates
+        QPointF leftCenter(m_rect.left(), m_rect.center().y());
+        QPointF rightCenter(m_rect.right(), m_rect.center().y());
+        // Style for the handle circles (e.g., white fill with a blue border)
+        painter.setBrush(Qt::white);
+        painter.setPen(QPen(Qt::blue, 1.5));
+        // Draw Left Ellipse
+        QRectF leftEllipseRect(leftCenter.x() - handleRadius, leftCenter.y() - handleRadius, 
+                            handleRadius * 2.0, handleRadius * 2.0);
+        painter.drawEllipse(leftEllipseRect);
+        // Draw Right Ellipse
+        QRectF rightEllipseRect(rightCenter.x() - handleRadius, rightCenter.y() - handleRadius, 
+                                handleRadius * 2.0, handleRadius * 2.0);
+        painter.drawEllipse(rightEllipseRect);
+    }
+    painter.restore();
+}
+
+std::unique_ptr<Shape> TextShape::clone() const {
+    return std::make_unique<TextShape>(*this);
+}
+
+ShapeType TextShape::type() const {
+    return ShapeType::Text;
+}
+
+void TextShape::serialize(QDataStream &out) const {
+    out << m_rect << m_text << m_color << m_font << m_bold << m_rotation_angle;
+}
+
+void TextShape::deserialize(QDataStream &in) {
+    in >> m_rect >> m_text >> m_color >> m_font >> m_bold >> m_rotation_angle;
+}
+
+bool TextShape::contains(const QPointF &point) const{
+    return m_rect.contains(point);
+}
+
+void TextShape::addPoint(const QPointF& p) {
+}
+
+QPolygonF TextShape::getPoints() {
+    return QPolygonF(m_rect);
+}
+
+void TextShape::setShapeData(const ShapeData_t& shape_data) {
+    // working assumption
+    // assert(shape_data.start.has_value());
+    // assert(shape_data.end.has_value());
+    // TODO, add QText to shape_data
+}
+
+void TextShape::setDrawingProperties(const drawing_properties_t& data) {
+    if (data.bold_text.has_value()) {
+        m_bold = data.bold_text.value();
+        m_font.setBold(m_bold);
+        // resize the text box when passing from to/from bold text
+        QFontMetricsF fontMetrics(m_font);
+        QSizeF textSize = fontMetrics.size(Qt::TextSingleLine, m_text);
+        m_rect.setSize(textSize);
+    }
+    else if (data.line_color.has_value()) {
+        m_color = data.line_color.value();
+    }
+    else
+        qDebug() << "text shape, unknown parameter";
+}
+
+void TextShape::moveRelative(const QPointF &delta) {
+    m_rect.setTopLeft( m_rect.topLeft() + delta);
+    m_rect.setBottomRight( m_rect.bottomRight() + delta);
+    m_rect = m_rect.normalized();
+}
+
+void TextShape::resizeShape(const QPointF &delta, const HandlePosition hp) {
+}
+
+void TextShape::zoomInOut(const qreal& factor) {
+    int newSize = qRound(m_font.pointSize() * factor);
+    m_font.setPointSize(qMax(1, newSize));
+    // resize the text box rectangle taking inot account the font size
+    QFontMetricsF fontMetrics(m_font);
+    QSizeF textSize = fontMetrics.size(Qt::TextSingleLine, m_text);
+    // Update the rect with the new calculated width and height
+    m_rect.setSize(textSize);
+}
+
+HandlePosition TextShape::hookTest(const QPointF& pt) const {
+    // AI generated and adapted
+    // 1. Define tolerance (e.g., handleRadius + a few extra pixels for easier clicking)
+    qreal handleRadius = 4.0;
+    qreal tolerance = handleRadius + 3.0; // Adjust as needed
+    qreal maxDistanceSquared = tolerance * tolerance;
+    // 2. Replicate the rotation/translation matrix used in draw()
+    QPointF pivot = m_rect.center();
+    QTransform transform;
+    transform.translate(pivot.x(), pivot.y());
+    transform.rotate(m_rotation_angle);
+    transform.translate(-pivot.x(), -pivot.y());
+    // 3. Invert the transform to map world coordinates (pt) -> local shape coordinates
+    bool invertible = false;
+    QTransform invertedTransform = transform.inverted(&invertible);
+    if (!invertible) {
+        return HandlePosition::None;
+    }
+    QPointF localPt = invertedTransform.map(pt);
+    // 4. Helper lambda for squared distance calculation (matching your LineShape style)
+    auto distanceSquared = [](const QPointF& p1, const QPointF& p2) -> qreal {
+        qreal dx = p1.x() - p2.x();
+        qreal dy = p1.y() - p2.y();
+        return dx * dx + dy * dy;
+    };
+    // 5. Calculate local center coordinates of the Left and Right ellipses (same as draw())
+    QPointF leftCenter(m_rect.left(), m_rect.center().y());
+    QPointF rightCenter(m_rect.right(), m_rect.center().y());
+    // 6. Check Left Handle
+    if (distanceSquared(localPt, leftCenter) <= maxDistanceSquared) {
+        return HandlePosition::StartPoint;
+    }
+    // 7. Check Right Handle
+    if (distanceSquared(localPt, rightCenter) <= maxDistanceSquared) {
+        return HandlePosition::EndPoint;
+    }
+    return HandlePosition::None;
+}
+
+QRectF TextShape::getHandleRect(const QPointF& center) const {
+    return QRectF(center.x() - handle_size / 2.0,
+        center.y() - handle_size / 2.0,
+        handle_size,
+        handle_size);
+}
+
+void TextShape::setRotationAngle(const double& rotation_angle) {
+    m_rotation_angle += rotation_angle;
+    if (m_rotation_angle >= 360.0)
+        m_rotation_angle -= 360.0;
+    else if (m_rotation_angle < 0.0)
+        m_rotation_angle += 360.0;
 }

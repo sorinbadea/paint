@@ -7,7 +7,7 @@ QIcon createLineIcon(unsigned size) {
 
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(Qt::red, 2.5, Qt::SolidLine, Qt::RoundCap));
+    painter.setPen(QPen(Qt::black, tool_bar_pen_width, Qt::SolidLine, Qt::RoundCap));
     // Draw diagonal line
     painter.drawLine(3, size - 10, size - 10, 3);
     return QIcon(pixmap);
@@ -19,7 +19,7 @@ QIcon createCircleIcon(unsigned size) {
     pixmap.fill(Qt::transparent);
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(Qt::red, 2.5, Qt::SolidLine, Qt::RoundCap));
+    painter.setPen(QPen(Qt::black, tool_bar_pen_width, Qt::SolidLine, Qt::RoundCap));
     painter.setBrush(Qt::NoBrush);
     // Draw circle in center
     painter.drawEllipse(5, 5, size - 10, size - 10);
@@ -33,7 +33,7 @@ QIcon createRectangleIcon(unsigned size) {
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing, false);
     // 3. Define pen (3px outline) and no brush
-    painter.setPen(QPen(Qt::red, 2.5));
+    painter.setPen(QPen(Qt::black, tool_bar_pen_width));
     painter.setBrush(Qt::NoBrush);
     painter.drawRect(5, 5, size - 10, size -10);
     if (!painter.end()) {
@@ -58,7 +58,7 @@ QIcon createPolygonIcon() {
             << QPointF(9.0, 27.5)   // Bottom-left
             << QPointF(4.0, 11.5);   // Top-left
 
-    painter.setPen(QPen(Qt::red, 2.5));
+    painter.setPen(QPen(Qt::black, tool_bar_pen_width));
     painter.setBrush(Qt::NoBrush);
     
     // Draws both fill and border outline
@@ -274,14 +274,14 @@ QIcon createArcToolIcon(const QColor& iconColor, const QSize& iconSize) {
 
     // 1. Setup pen for toolbar icon line work
     QPen pen(iconColor);
-    pen.setWidthF(2.2);
+    pen.setWidthF(tool_bar_pen_width);
     pen.setCapStyle(Qt::RoundCap);
     painter.setPen(pen);
     painter.setBrush(Qt::NoBrush);
 
     // 2. Define a clean 180-degree arch centered inside the 32x32 icon canvas
     // Bounding box inset by 5px margin to keep the stroke clear of button edges
-    QRectF arcBounds(5.0, 7.0, 22.0, 22.0);
+    QRectF arcBounds(5.0, 8.0, 22.0, 23.0);
 
     // Angles in 16ths of a degree (0° = 3 o'clock; 180° = 180-degree sweep CCW)
     int startAngle16ths = 0 * 16;
@@ -294,8 +294,8 @@ QIcon createArcToolIcon(const QColor& iconColor, const QSize& iconSize) {
     painter.setBrush(iconColor);
     
     // Left handle (180° point) and Right handle (0° point)
-    //painter.drawEllipse(QPointF(5.0, 18.0), 2.5, 2.5);
-    //painter.drawEllipse(QPointF(27.0, 18.0), 2.5, 2.5);
+    painter.drawEllipse(QPointF(5.0, 18.0), 2.5, 2.5);
+    painter.drawEllipse(QPointF(27.0, 18.0), 2.5, 2.5);
 
     if (!painter.end()) {
         qDebug() << "Painting failed!";
@@ -418,6 +418,35 @@ QIcon createRectanglePreviewIcon(const QSize& iconSize, const QColor& color) {
     if (!painter.end()) {
         qDebug() << "Painting failed!";
     }
+    return QIcon(pixmap);
+}
+
+QIcon createAbIcon(const unsigned size) {
+    // AI generated and adapted
+    // 1. Create a pixmap matching the requested size with a transparent background
+    QPixmap pixmap(size, size);
+    pixmap.fill(Qt::transparent);
+
+    // 2. Set up the painter
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setRenderHint(QPainter::TextAntialiasing, true);
+
+    // 3. Configure font and scale pixel size proportionally to the icon size
+    QFont font = painter.font();
+    int proportionalSize = size/2;
+    font.setPixelSize(proportionalSize);
+    font.setBold(true);
+    painter.setFont(font);
+
+    // 4. Set text color (dark gray; change if you need white text for dark themes)
+    painter.setPen(Qt::black);
+
+    // 5. Draw "Ab" perfectly centered inside the pixmap rectangle
+    painter.drawText(pixmap.rect(), Qt::AlignCenter, "Ab");
+    painter.end();
+
+    // 6. Return the wrapped icon
     return QIcon(pixmap);
 }
 
