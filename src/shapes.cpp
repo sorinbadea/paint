@@ -50,7 +50,7 @@ void LineShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
     painter.restore();
 }
 
-void LineShape::drawSelect(QPainter &painter, const bool draw_hooks) const {
+void LineShape::drawSelect(QPainter &painter, const w_wo_hooks draw_hooks) const {
     painter.save();
     painter.setPen(m_shape_select_pencil);
     painter.drawLine(m_line);
@@ -62,7 +62,7 @@ void LineShape::drawSelect(QPainter &painter, const bool draw_hooks) const {
         drawBaseEndpoints(painter);
     }
 
-    if(draw_hooks) {
+    if(draw_hooks == w_wo_hooks::w_hooks) {
         painter.setPen(m_hook_pen);
         painter.setBrush(m_hook_brush);
         qreal circleRadius = 4.0;
@@ -318,12 +318,12 @@ QRectF RectangleShape::getHandleRect(const QPointF& center) const {
         handle_size);
 }
 
-void RectangleShape::drawSelect(QPainter &painter, const bool draw_hooks) const {
+void RectangleShape::drawSelect(QPainter &painter, const w_wo_hooks draw_hooks) const {
     painter.save();
     painter.setPen(m_shape_select_pencil);
     painter.setBrush(m_shape_select_brush);
     painter.drawRect(m_rectangle);
-    if (draw_hooks) {
+    if (draw_hooks == w_wo_hooks::w_hooks) {
         const QPointF topCenter(m_rectangle.center().x(), m_rectangle.top());
         const QPointF bottomCenter(m_rectangle.center().x(), m_rectangle.bottom());
         const QPointF leftCenter(m_rectangle.left(), m_rectangle.center().y());
@@ -496,7 +496,7 @@ void CircleShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
     }
 }
 
-void CircleShape::drawSelect(QPainter &painter, const bool draw_hooks) const {
+void CircleShape::drawSelect(QPainter &painter, const w_wo_hooks draw_hooks) const {
     if (m_radius_x <= 0.0 || m_radius_y <= 0)
         return;
     painter.save();
@@ -520,7 +520,7 @@ void CircleShape::drawSelect(QPainter &painter, const bool draw_hooks) const {
     };
 
     // Draw small handle rectangles centered on each point
-    if (draw_hooks) {
+    if (draw_hooks == w_wo_hooks::w_hooks) {
         painter.setPen(m_hook_pen);
         painter.setBrush(m_hook_brush);
         for (const QPointF& center : handleMidpoints) {
@@ -729,7 +729,7 @@ void PolygonShape::draw(QPainter &painter, const ShapeData_t& shape_data) const 
     painter.restore();
 }
 
-void PolygonShape::drawSelect(QPainter &painter, const bool draw_hooks) const {
+void PolygonShape::drawSelect(QPainter &painter, const w_wo_hooks draw_hooks) const {
     painter.save();
     painter.setPen(m_shape_select_pencil);
     painter.setBrush(m_shape_select_brush);
@@ -747,7 +747,7 @@ void PolygonShape::drawSelect(QPainter &painter, const bool draw_hooks) const {
         bottomCenter,
         leftCenter
     };
-    if (draw_hooks) {
+    if (draw_hooks == w_wo_hooks::w_hooks) {
         painter.setPen(m_hook_pen);
         painter.setBrush(m_hook_brush);
         for (const QPointF& center : handleMidpoints) {
@@ -1011,7 +1011,7 @@ void ArcShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
     painter.restore();
 }
 
-void ArcShape::drawSelect(QPainter &painter, const bool draw_hooks) const {
+void ArcShape::drawSelect(QPainter &painter, const w_wo_hooks draw_hooks) const {
     painter.save();
     painter.setPen(m_shape_select_pencil);
     drawArc(painter, m_shape_select_pencil, DrawingMode::Preview);
@@ -1245,7 +1245,7 @@ void TextShape::draw(QPainter &painter, const ShapeData_t& shape_data) const {
     painter.restore();
 }
 
-void TextShape::drawSelect(QPainter &painter, const bool draw_hooks) const {
+void TextShape::drawSelect(QPainter &painter, const w_wo_hooks draw_hooks) const {
 
     painter.save();
     QPointF pivot = m_rect.center();
@@ -1257,11 +1257,11 @@ void TextShape::drawSelect(QPainter &painter, const bool draw_hooks) const {
     painter.setPen(m_shape_select_pencil);
     painter.setFont(m_font);
     // draw the box framing the text
-    if (draw_hooks)
+    if (draw_hooks == w_wo_hooks::w_hooks)
         painter.drawRect(m_rect);
     painter.drawText(m_rect, Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap, m_text);
 
-    if (draw_hooks) {
+    if (draw_hooks== w_wo_hooks::w_hooks) {
         //Draw the two small ellipses at the middle of the Left and Right sides
         double handleRadius = 4.0; // Radius of the circle (8x8 pixels total size)
         // Calculate center coordinates
@@ -1295,7 +1295,7 @@ void TextShape::serialize(QDataStream &out) const {
 }
 
 void TextShape::deserialize(QDataStream &in) {
-    in >> m_rect >> m_text >> m_color >> m_font >> m_bold >> m_rotation_angle;
+    in >> m_rect >> m_text >> m_color >> m_font >>m_bold >> m_rotation_angle;
 }
 
 bool TextShape::contains(const QPointF &point) const{

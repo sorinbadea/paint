@@ -56,6 +56,11 @@ enum class ArrowEndPoint : uint8_t {
     EmptyArrow,
 };
 
+enum class w_wo_hooks : uint8_t {
+    wo_hooks,
+    w_hooks
+};
+
 typedef struct {
     std::optional<ArrowBasePoint> basePoint;
     std::optional<ArrowEndPoint>  endPoint;
@@ -110,7 +115,7 @@ public:
     // draw preview
     virtual void draw(QPainter &painter, const ShapeData_t& shape_data) const = 0;
     // draw a selected shape
-    virtual void drawSelect(QPainter &painter, const bool draw_hooks) const = 0;
+    virtual void drawSelect(QPainter &painter, const w_wo_hooks draw_hooks) const = 0;
 
     // check if the current position overlaps an existing shape
     virtual bool contains(const QPointF &point) const = 0;
@@ -153,7 +158,7 @@ public:
     std::unique_ptr<Shape> clone() const override;
     void draw(QPainter &painter) const override;
     void draw(QPainter &painter, const ShapeData_t& shape_data) const override;
-    void drawSelect(QPainter &painter, const bool draw_hooks) const override;
+    void drawSelect(QPainter &painter, const w_wo_hooks draw_hooks) const override;
     ShapeType type() const override;
     bool contains(const QPointF &point) const override;
     HandlePosition hookTest(const QPointF& pt) const override;
@@ -183,7 +188,7 @@ public:
     std::unique_ptr<Shape> clone() const override;
     void draw(QPainter &painter) const override;
     void draw(QPainter &painter, const ShapeData_t& shape_data) const override;
-    void drawSelect(QPainter &painter, const bool draw_hooks) const override;
+    void drawSelect(QPainter &painter, const w_wo_hooks draw_hooks) const override;
     ShapeType type() const override;
     HandlePosition hookTest(const QPointF& pt) const override;
     bool contains(const QPointF &point) const override;
@@ -211,7 +216,7 @@ public:
     std::unique_ptr<Shape> clone() const override;
     void draw(QPainter &painter) const override;
     void draw(QPainter &painter, const ShapeData_t& shape_data) const override;
-    void drawSelect(QPainter &painter, const bool draw_hooks) const override;
+    void drawSelect(QPainter &painter, const w_wo_hooks draw_hooks) const override;
     ShapeType type() const override;
     HandlePosition hookTest(const QPointF& pt) const override;
     bool contains(const QPointF &point) const override;
@@ -238,7 +243,7 @@ public:
     std::unique_ptr<Shape> clone() const override;
     void draw(QPainter &painter) const override;
     void draw(QPainter &painter, const ShapeData_t& shape_data) const override;
-    void drawSelect(QPainter &painter, const bool draw_hooks) const override;
+    void drawSelect(QPainter &painter, const w_wo_hooks draw_hooks) const override;
     ShapeType type() const override;
     HandlePosition hookTest(const QPointF& pt) const override;
     bool contains(const QPointF &point) const override;
@@ -264,7 +269,7 @@ public:
     std::unique_ptr<Shape> clone() const override;
     void draw(QPainter &painter) const override;
     void draw(QPainter &painter, const ShapeData_t& shape_data) const override;
-    void drawSelect(QPainter &painter, const bool draw_hooks) const override;
+    void drawSelect(QPainter &painter, const w_wo_hooks draw_hooks) const override;
     ShapeType type() const override;
     HandlePosition hookTest(const QPointF& pt) const override;
     bool contains(const QPointF &point) const override;
@@ -296,7 +301,7 @@ public:
     std::unique_ptr<Shape> clone() const override;
     void draw(QPainter &painter) const override;
     void draw(QPainter &painter, const ShapeData_t& shape_data) const override;
-    void drawSelect(QPainter &painter, const bool draw_hooks) const override;
+    void drawSelect(QPainter &painter, const w_wo_hooks draw_hooks) const override;
     ShapeType type() const override;
     HandlePosition hookTest(const QPointF& pt) const override;
     bool contains(const QPointF &point) const override;

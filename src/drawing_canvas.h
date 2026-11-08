@@ -1,22 +1,20 @@
 #ifndef DRAWINGCANVAS_H
 #define DRAWINGCANVAS_H
 #include "shapes.h"
+#include "position_manager.h"
 #include <QToolTip>
-#include <QTextEdit>
 #include <QWidget>
 #include <QMouseEvent>
-#include <QPointF>
 #include <QFile>
 #include <vector>
 #include <memory>
 #include <cmath>
 #include <algorithm>
 
-constexpr int pen_width = 2;
+constexpr int default_pen_width = 2;
+constexpr unsigned grid_width = 16;
 constexpr qreal clone_x_offset = 10.0;
 constexpr qreal clone_y_offset = 10.0;
-constexpr bool wo_hooks = false;
-constexpr bool w_hooks = true;
 const std::vector<int> preset_widths = {1, 2, 3, 4, 5, 7, 9, 11, 12};
 constexpr qreal text_width = 100.0;
 constexpr qreal text_height = 30.0;
@@ -48,7 +46,7 @@ public:
     bool isGrouping() const;
     ToolMode getToolMode() const;
     const QColor& getDrawingColor() const;
-    const int& getPenWidth() const;
+    const unsigned& getPenWidth() const;
     // context menu actions
     void cloneShape();   // Copy/Paste
     void cloneGroup();   // Clone all grouped shapes
@@ -75,7 +73,7 @@ private:
     void finalizeShape(std::optional<QPointF> const&  point);
 
     // returns true if one of the 4 surounding hooks is clicked
-    inline bool hookSelected(HandlePosition h) const;
+    bool hookSelected(HandlePosition h) const;
 
     // check if a Shape is below the cursor
     Shape* getSelectedShape(const QPointF& point);
@@ -93,8 +91,12 @@ private:
     // return true for drawing shapes
     bool drawingShape() const;
 
-    // open a QLineedir widget
-    void openTextEditorForShape(TextShape* shape, const QPointF& position);
+    // open a QLineEdit widget
+    void openTextLineEditor(TextShape* shape, const QPointF& position);
+
+    // mouse events handling by the selected shape
+    void handleMousePressEvent(const QPointF&);
+    void handleMouseMoveEvent(const QPointF&);
 
     // Attributes
     // drawing mode, Circle, Line, Selection..
@@ -104,10 +106,7 @@ private:
     bool m_isDrawing;
     bool m_grouping;
 
-    // position
-    QPointF m_start_pos;
-    QPointF m_current_pos;
-    QPointF m_start_zoom_pos;
+    // Hook handle position, CenterUp, CenterDown, MiddleRight, etc...
     HandlePosition m_handle;
 
     /*
@@ -115,11 +114,11 @@ private:
     */
     std::list<Shape*> m_group_shapes;
 
-    // store the position in the list of shapes of the selected shape
+    // store the position of the selected shape in the list of shapes
     std::list<std::unique_ptr<Shape>>::iterator m_select_shape_it;
     std::list<std::unique_ptr<Shape>>::iterator m_original_next_it;
 
-    // list of existing shapes, used when paintEvent is called
+    // list of existing shapes
     std::list<std::unique_ptr<Shape>> m_shapes;
 
     /*
@@ -129,25 +128,31 @@ private:
 
     /* 
         points to the selected shape,
-        can be zoomed-in zoomed-out, moved or removed
+        can be zoomed-in zoomed-out, moved, resized, cloned or deleted
     */
-    Shape* m_selected_shape;
+    Shape*       m_selected_shape;
 
-    // drawing color, brush and pen width
-    int m_pen_width;
-    QColor m_drawing_color;
-    QColor m_selected_color;
-    QColor m_brush_color;
-    QBrush m_select_brush;
-    QBrush m_grouping_brush;
+    // drawing color, brush and pen style and width
+    unsigned     m_pen_width;
+    QColor       m_drawing_color;
+    QColor       m_selected_color;
+    QColor       m_brush_color;
+    QBrush       m_select_brush;
+    QBrush       m_grouping_brush;
     Qt::PenStyle m_pen_style;
 
-    // zoom factor
-    qreal m_zoom_factor;
+    // zoom factor, <1 zoom in, >1 zoom out
+    qreal        m_zoom_factor;
 
-    // QT Text Editor
-    QLineEdit* m_active_text;
+    // Text editor
+    QLineEdit*   m_active_text;
     std::unique_ptr<Shape> m_currentEditingShape;
+
+    // Position manager, store drawing start/stop position, start resize position
+    PositionManager m_position_mgr;
 };
+
 double computeRotationAngle(QPointF startVector, QPointF endVector);
+
 #endif // DRAWINGCANVAS_H
+
